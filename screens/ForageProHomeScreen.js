@@ -55,7 +55,7 @@ export default function ForageProHomeScreen({ route, navigation }) {
     <View style={[styles.container, { paddingTop: insets.top }]}>
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>🌿 ForagePro — {siteCode}</Text>
+        <Text style={styles.headerTitle}>🌿 FourragePro — {siteCode}</Text>
         <Text style={styles.headerDate}>{dateAffichee}</Text>
       </View>
 

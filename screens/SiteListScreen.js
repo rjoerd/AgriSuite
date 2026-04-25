@@ -31,16 +31,24 @@ export default function SiteListScreen({ navigation }) {
 
       {/* ── Header ── */}
       <View style={styles.header}>
-        <View>
+        <View style={styles.headerLeft}>
           <Text style={styles.titre}>🌿 AgriSuite — Sites</Text>
           <Text style={styles.sousTitre}>{sites.length} sites actifs</Text>
         </View>
-        <TouchableOpacity
-          style={styles.btnCropEngine}
-          onPress={() => navigation.navigate('CropEngine')}
-        >
-          <Text style={styles.btnCropEngineText}>🌱 CropEngine</Text>
-        </TouchableOpacity>
+        <View style={styles.headerActions}>
+          <TouchableOpacity
+            style={styles.btnTransversal}
+            onPress={() => navigation.navigate('CropEngine')}
+          >
+            <Text style={styles.btnTransversalText}>🌱 CropEngine</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.btnTransversal, styles.btnExport]}
+            onPress={() => navigation.navigate('ExportTrackHome')}
+          >
+            <Text style={[styles.btnTransversalText, styles.btnExportText]}>📦 ExportTrack</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       <FlatList
@@ -89,6 +97,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 8,
     paddingBottom: 8,
+    gap: 8,
+  },
+  headerLeft: {
+    flex: 1,
+  },
+  headerActions: {
+    flexDirection: 'column',
+    gap: 6,
+    alignItems: 'flex-end',
   },
   titre: {
     color: '#7ec87e',
@@ -100,18 +117,26 @@ const styles = StyleSheet.create({
     fontSize: 12,
     marginTop: 2,
   },
-  btnCropEngine: {
+  btnTransversal: {
     backgroundColor: '#1a3a1a',
     borderRadius: 10,
-    paddingHorizontal: 14,
+    paddingHorizontal: 12,
     paddingVertical: 8,
     borderWidth: 1,
     borderColor: '#3a6a3a',
+    minWidth: 140,
+    alignItems: 'center',
   },
-  btnCropEngineText: {
+  btnTransversalText: {
     color: '#7ec87e',
     fontSize: 13,
     fontWeight: '600',
+  },
+  btnExport: {
+    borderColor: '#d4a04a',
+  },
+  btnExportText: {
+    color: '#d4a04a',
   },
   card: {
     backgroundColor: '#243d24',

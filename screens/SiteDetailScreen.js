@@ -77,7 +77,7 @@ export default function SiteDetailScreen({ route, navigation }) {
           style={styles.forageButton}
           onPress={() => navigation.navigate('ForageProHome', { siteId: site.id, siteCode: site.code })}
         >
-          <Text style={styles.forageButtonText}>🌿 ForagePro</Text>
+          <Text style={styles.forageButtonText}>🌿 FourragePro</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -94,6 +94,7 @@ export default function SiteDetailScreen({ route, navigation }) {
           <Text style={styles.mapButtonText}>🗺️ Carte & Parcelles GPS</Text>
         </TouchableOpacity>
 
+        
         {/* ── Actions ── */}
         <Text style={styles.sectionActions}>Actions</Text>
 

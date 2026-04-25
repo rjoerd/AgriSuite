@@ -10,6 +10,7 @@ import { initCropEngine } from './database/cropEngine';
 import { initForagePro } from './database/foragePro';
 import { seedForagePro } from './database/forageData';
 import { initMaraicher } from './database/maraicher';
+import { seedExportTrack } from './database/exportTrack';
 
 // Screens — existants
 import SiteListScreen from './screens/SiteListScreen';
@@ -28,6 +29,15 @@ import PlancheListScreen from './screens/PlancheListScreen';
 import PlancheFormScreen from './screens/PlancheFormScreen';
 import CultureFormScreen from './screens/CultureFormScreen';
 import SaisieRecolteScreen from './screens/SaisieRecolteScreen';
+// Phase 3 — ExportTrack
+import ExportTrackHomeScreen from './screens/ExportTrackHomeScreen';
+import {
+  LotListScreen,
+  FournisseurListScreen,
+  AcheteurListScreen,
+  ExpeditionListScreen,
+  BonCollecteFormScreen,
+} from './screens/ExportTrackPlaceholders';
 
 // Initialisation synchrone avant tout rendu
 initDB();
@@ -37,6 +47,7 @@ initMaraicher();    // ← nouveau : crée les tables maraîchage
 seedCropEngine();
 seedForagePro();
 seedMaraicher();    // ← nouveau : peuple cultures maraîchères + objectifs sites
+seedExportTrack();
 
 const Stack = createNativeStackNavigator();
 
@@ -83,6 +94,36 @@ export default function App() {
         <Stack.Screen name="CultureForm" component={CultureFormScreen} options={{ headerShown: false }} />
         <Stack.Screen name="SaisieRecolte" component={SaisieRecolteScreen} options={{ headerShown: false }} />
         {/* MaraîcherGuide — à ajouter en Session 2 */}
+        <Stack.Screen
+  name="ExportTrackHome"
+  component={ExportTrackHomeScreen}
+  options={{ title: 'ExportTrack', headerShown: false }}
+/>
+<Stack.Screen
+  name="LotList"
+  component={LotListScreen}
+  options={{ title: 'Lots', headerStyle: { backgroundColor: '#1a2e1a' }, headerTintColor: '#7ec87e' }}
+/>
+<Stack.Screen
+  name="FournisseurList"
+  component={FournisseurListScreen}
+  options={{ title: 'Fournisseurs', headerStyle: { backgroundColor: '#1a2e1a' }, headerTintColor: '#7ec87e' }}
+/>
+<Stack.Screen
+  name="AcheteurList"
+  component={AcheteurListScreen}
+  options={{ title: 'Acheteurs', headerStyle: { backgroundColor: '#1a2e1a' }, headerTintColor: '#7ec87e' }}
+/>
+<Stack.Screen
+  name="ExpeditionList"
+  component={ExpeditionListScreen}
+  options={{ title: 'Expéditions', headerStyle: { backgroundColor: '#1a2e1a' }, headerTintColor: '#7ec87e' }}
+/>
+<Stack.Screen
+  name="BonCollecteForm"
+  component={BonCollecteFormScreen}
+  options={{ title: 'Bon de collecte', headerStyle: { backgroundColor: '#1a2e1a' }, headerTintColor: '#7ec87e' }}
+/>
       </Stack.Navigator>
     </NavigationContainer>
   );

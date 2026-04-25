@@ -1,0 +1,20 @@
+# Secrets et clés API
+.env
+.env.*
+*.key
+*.pem
+*.pfx
+
+# Données sensibles fournisseurs réels
+data/production/
+data/private/
+fournisseurs_reels.csv
+
+# Notes personnelles
+notes_perso/
+TODO_perso.md
+
+# Système
+node_modules/
+.expo/
+*.log
