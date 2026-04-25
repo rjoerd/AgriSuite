@@ -1,5 +1,6 @@
 import * as SQLite from 'expo-sqlite';
 
+
 const db = SQLite.openDatabaseSync('agrisuite.db');
 
 export function initDB() {
@@ -32,10 +33,10 @@ export function initDB() {
   const count = db.getFirstSync('SELECT COUNT(*) as n FROM sites');
   if (count.n === 0) {
     const sites = [
-      { code: 'Site A', superficie: '2 ha', region: 'Ampanotokana (près RN4)', altitude: '~1 316 m', type_terrain: 'Tanety', activite: 'Vierge — tout à faire', acces_eau: 'Problématique', notes: '' },
-      { code: 'Site B', superficie: '1 ha', region: 'Belanitra (nord aéroport Ivato)', altitude: '~1 300 m', type_terrain: 'Tanety', activite: 'Vierge — tout à faire', acces_eau: 'Problématique', notes: '' },
-      { code: 'Site C', superficie: '3 000 m²', region: '7 km est de Mahitsy', altitude: '~1 400 m', type_terrain: 'Tanety', activite: 'Vierge — tout à faire', acces_eau: 'Problématique', notes: '' },
-      { code: 'Site D', superficie: '1 000 m²', region: '5 km de Moramanga', altitude: '~900 m', type_terrain: 'Bas-fond alluvial (fleuve Mangoro)', activite: 'Vierge — tout à faire', acces_eau: 'Bassin existant', notes: 'Potentiel pisciculture à évaluer' },
+      { code: 'Site A', superficie: '1 ha', region: 'Ampanotokana (près RN4)', altitude: '~1 316 m', type_terrain: 'Tanety', activite: 'Vierge — tout à faire', acces_eau: 'Problématique', notes: '' },
+      { code: 'Site B', superficie: '1 000 m²', region: 'Belanitra (nord aéroport Ivato)', altitude: '~1 300 m', type_terrain: 'Tanety', activite: 'Vierge — tout à faire', acces_eau: 'Problématique', notes: '' },
+      { code: 'Site C', superficie: '1 500 m²', region: '7 km est de Mahitsy', altitude: '~1 400 m', type_terrain: 'Tanety', activite: 'Vierge — tout à faire', acces_eau: 'Problématique', notes: '' },
+      { code: 'Site D', superficie: '2 ha', region: '5 km de Moramanga', altitude: '~900 m', type_terrain: 'Bas-fond alluvial (fleuve Mangoro)', activite: 'Vierge — tout à faire', acces_eau: 'Bassin existant', notes: 'Potentiel pisciculture à évaluer' },
     ];
     for (const s of sites) {
       db.runSync(
@@ -133,3 +134,4 @@ export function seedCropEngine() {
     );
   });
 }
+
