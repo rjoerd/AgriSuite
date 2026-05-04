@@ -11,43 +11,69 @@ import { initForagePro } from './database/foragePro';
 import { seedForagePro } from './database/forageData';
 import { initMaraicher } from './database/maraicher';
 import { seedExportTrack } from './database/exportTrack';
+import { initParametresEntreprise } from './database/parametresEntreprise';
+import { initCertifTrack } from './database/certifTrack';
+import { seedCertifTrack } from './database/certifTrackData';
 
-// Screens — existants
+// Screens — Phase 0a / 0b : Sites, parcelles, CropEngine
 import SiteListScreen from './screens/SiteListScreen';
 import SiteDetailScreen from './screens/SiteDetailScreen';
 import SiteFormScreen from './screens/SiteFormScreen';
 import ParcelleMapScreen from './screens/ParcelleMapScreen';
 import CropEngineScreen from './screens/CropEngineScreen';
+
+// Screens — Phase 1 : ForagePro + Météo
 import TroupeauScreen from './screens/TroupeauScreen';
 import SaisieJournaliereScreen from './screens/SaisieJournaliereScreen';
 import StockFourrageScreen from './screens/StockFourrageScreen';
 import ForageProHomeScreen from './screens/ForageProHomeScreen';
 import MeteoSiteScreen from './screens/MeteoSiteScreen';
-// Imports à ajouter
+
+// Screens — Phase 2 : MaraîcherGuide
 import MaraicherHomeScreen from './screens/MaraicherHomeScreen';
 import PlancheListScreen from './screens/PlancheListScreen';
 import PlancheFormScreen from './screens/PlancheFormScreen';
 import CultureFormScreen from './screens/CultureFormScreen';
 import SaisieRecolteScreen from './screens/SaisieRecolteScreen';
-// Phase 3 — ExportTrack
+
+// Screens — Phase 3 : ExportTrack
 import ExportTrackHomeScreen from './screens/ExportTrackHomeScreen';
+import LotListScreen from './screens/LotListScreen';
+import LotProductionFormScreen from './screens/LotProductionFormScreen';
 import {
-  LotListScreen,
-  FournisseurListScreen,
   AcheteurListScreen,
   ExpeditionListScreen,
-  BonCollecteFormScreen,
 } from './screens/ExportTrackPlaceholders';
+import LotDetailScreen from './screens/LotDetailScreen';
+import RecoltesHistoryScreen from './screens/RecoltesHistoryScreen';
+import FournisseurListScreen from './screens/FournisseurListScreen';
+   import FournisseurFormScreen from './screens/FournisseurFormScreen';
+   import LotCollecteFormScreen from './screens/LotCollecteFormScreen';
+import BonCollecteFormScreen from './screens/BonCollecteFormScreen';
+import LotClotureScreen from './screens/LotClotureScreen';
+import EtapeFormScreen from './screens/EtapeFormScreen';
+import AnalyseQualiteFormScreen from './screens/AnalyseQualiteFormScreen';
+import ConditionnementFormScreen from './screens/ConditionnementFormScreen';
+import RectifierLotScreen from './screens/RectifierLotScreen';
+import PasseportPdfPreviewScreen from './screens/PasseportPdfPreviewScreen';
+import ParametresEntrepriseScreen from './screens/ParametresEntrepriseScreen';
+import HomeScreen from './screens/HomeScreen';
+import CertifTrackHomeScreen from './screens/CertifTrackHomeScreen';
+import ReferentielDetailScreen from './screens/ReferentielDetailScreen';
+import EngagementFormScreen from './screens/EngagementFormScreen';
 
 // Initialisation synchrone avant tout rendu
 initDB();
 initCropEngine();
 initForagePro();
-initMaraicher();    // ← nouveau : crée les tables maraîchage
+initMaraicher();
 seedCropEngine();
 seedForagePro();
-seedMaraicher();    // ← nouveau : peuple cultures maraîchères + objectifs sites
+seedMaraicher();
 seedExportTrack();
+initParametresEntreprise();
+initCertifTrack();
+seedCertifTrack();
 
 const Stack = createNativeStackNavigator();
 
@@ -55,74 +81,209 @@ export default function App() {
   return (
     <NavigationContainer>
       <StatusBar style="light" />
-      <Stack.Navigator
-        screenOptions={{
-          headerStyle: { backgroundColor: '#1a2e1a' },
-          headerTintColor: '#7ec87e',
-          headerTitleStyle: { fontWeight: 'bold' },
-          contentStyle: { backgroundColor: '#1a2e1a' },
-        }}
-      >
-        <Stack.Screen name="SiteList" component={SiteListScreen}
-          options={{ headerShown: false }} />
-        <Stack.Screen name="SiteDetail" component={SiteDetailScreen}
-          options={{ title: 'Détail du site' }} />
-        <Stack.Screen name="SiteForm" component={SiteFormScreen}
+              {/* ─── Phase 0a / 0b ─── */}
+        <Stack.Navigator screenOptions={{ headerShown: false }}>
+  {/* NOUVEAU : HomeScreen en premier (route par défaut) */}
+  <Stack.Screen name="Home" component={HomeScreen} />
+
+        <Stack.Screen
+          name="SiteList"
+          component={SiteListScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="SiteDetail"
+          component={SiteDetailScreen}
+          options={{ title: 'Détail du site' }}
+        />
+        <Stack.Screen
+          name="SiteForm"
+          component={SiteFormScreen}
           options={({ route }) => ({
             title: route.params?.siteId ? 'Modifier le site' : 'Nouveau site',
-          })} />
-        <Stack.Screen name="ParcelleMap" component={ParcelleMapScreen}
+          })}
+        />
+        <Stack.Screen
+          name="ParcelleMap"
+          component={ParcelleMapScreen}
           options={({ route }) => ({
             title: `📍 ${route.params?.siteCode || 'Carte'}`,
-          })} />
-        <Stack.Screen name="CropEngine" component={CropEngineScreen}
-          options={{ headerShown: false }} />
-        <Stack.Screen name="Troupeau" component={TroupeauScreen}
-          options={{ headerShown: false }} />
-        <Stack.Screen name="SaisieJournaliere" component={SaisieJournaliereScreen}
-          options={{ headerShown: false }} />
-        <Stack.Screen name="StockFourrage" component={StockFourrageScreen}
-          options={{ headerShown: false }} />
-        <Stack.Screen name="ForageProHome" component={ForageProHomeScreen}
-          options={{ headerShown: false }} />
-        <Stack.Screen name="MeteoSite" component={MeteoSiteScreen}
-          options={{ headerShown: false }} />
-          {/* MaraîcherGuide */}
-        <Stack.Screen name="MaraicherHome" component={MaraicherHomeScreen} options={{ headerShown: false }} />
-        <Stack.Screen name="PlancheList" component={PlancheListScreen} options={{ headerShown: false }} />
-        <Stack.Screen name="PlancheForm" component={PlancheFormScreen} options={{ headerShown: false }} />
-        <Stack.Screen name="CultureForm" component={CultureFormScreen} options={{ headerShown: false }} />
-        <Stack.Screen name="SaisieRecolte" component={SaisieRecolteScreen} options={{ headerShown: false }} />
-        {/* MaraîcherGuide — à ajouter en Session 2 */}
+          })}
+        />
         <Stack.Screen
-  name="ExportTrackHome"
-  component={ExportTrackHomeScreen}
-  options={{ title: 'ExportTrack', headerShown: false }}
-/>
-<Stack.Screen
-  name="LotList"
-  component={LotListScreen}
-  options={{ title: 'Lots', headerStyle: { backgroundColor: '#1a2e1a' }, headerTintColor: '#7ec87e' }}
-/>
-<Stack.Screen
-  name="FournisseurList"
-  component={FournisseurListScreen}
-  options={{ title: 'Fournisseurs', headerStyle: { backgroundColor: '#1a2e1a' }, headerTintColor: '#7ec87e' }}
-/>
-<Stack.Screen
-  name="AcheteurList"
-  component={AcheteurListScreen}
-  options={{ title: 'Acheteurs', headerStyle: { backgroundColor: '#1a2e1a' }, headerTintColor: '#7ec87e' }}
-/>
-<Stack.Screen
-  name="ExpeditionList"
-  component={ExpeditionListScreen}
-  options={{ title: 'Expéditions', headerStyle: { backgroundColor: '#1a2e1a' }, headerTintColor: '#7ec87e' }}
-/>
-<Stack.Screen
+          name="CropEngine"
+          component={CropEngineScreen}
+          options={{ headerShown: false }}
+        />
+
+        {/* ─── Phase 1 — ForagePro + Météo ─── */}
+        <Stack.Screen
+          name="Troupeau"
+          component={TroupeauScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="SaisieJournaliere"
+          component={SaisieJournaliereScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="StockFourrage"
+          component={StockFourrageScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="ForageProHome"
+          component={ForageProHomeScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="MeteoSite"
+          component={MeteoSiteScreen}
+          options={{ headerShown: false }}
+        />
+
+        {/* ─── Phase 2 — MaraîcherGuide ─── */}
+        <Stack.Screen
+          name="MaraicherHome"
+          component={MaraicherHomeScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="PlancheList"
+          component={PlancheListScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="PlancheForm"
+          component={PlancheFormScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="CultureForm"
+          component={CultureFormScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="SaisieRecolte"
+          component={SaisieRecolteScreen}
+          options={{ headerShown: false }}
+        />
+
+        {/* ─── Phase 3 — ExportTrack ─── */}
+        <Stack.Screen
+          name="ExportTrackHome"
+          component={ExportTrackHomeScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="LotList"
+          component={LotListScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="LotProductionForm"
+          component={LotProductionFormScreen}
+          options={{ headerShown: false }}
+        />
+                <Stack.Screen
+          name="AcheteurList"
+          component={AcheteurListScreen}
+          options={{
+            title: 'Acheteurs',
+            headerStyle: { backgroundColor: '#1a2e1a' },
+            headerTintColor: '#7ec87e',
+          }}
+        />
+        <Stack.Screen
+          name="ExpeditionList"
+          component={ExpeditionListScreen}
+          options={{
+            title: 'Expéditions',
+            headerStyle: { backgroundColor: '#1a2e1a' },
+            headerTintColor: '#7ec87e',
+          }}
+        />
+        <Stack.Screen
   name="BonCollecteForm"
   component={BonCollecteFormScreen}
-  options={{ title: 'Bon de collecte', headerStyle: { backgroundColor: '#1a2e1a' }, headerTintColor: '#7ec87e' }}
+  options={{ headerShown: false }}
+/>
+       <Stack.Screen
+  name="LotDetail"
+  component={LotDetailScreen}
+  options={{ headerShown: false }}
+/>
+<Stack.Screen
+  name="LotCloture"
+  component={LotClotureScreen}
+  options={{ headerShown: false }}
+/>
+<Stack.Screen
+  name="RecoltesHistory"
+  component={RecoltesHistoryScreen}
+  options={{ headerShown: false }}
+/>
+<Stack.Screen
+          name="FournisseurList"
+          component={FournisseurListScreen}
+          options={{headerShown: false
+          }}
+        />
+<Stack.Screen
+     name="FournisseurForm"
+     component={FournisseurFormScreen}
+     options={{ headerShown: false }}
+   />
+   <Stack.Screen
+  name="LotCollecteForm"
+  component={LotCollecteFormScreen}
+  options={{ headerShown: false }}
+/>
+<Stack.Screen
+  name="EtapeForm"
+  component={EtapeFormScreen}
+  options={{ headerShown: false }}
+/>
+<Stack.Screen
+  name="AnalyseQualiteForm"
+  component={AnalyseQualiteFormScreen}
+  options={{ headerShown: false }}
+/>
+<Stack.Screen
+  name="ConditionnementForm"
+  component={ConditionnementFormScreen}
+  options={{ headerShown: false }}
+/>
+<Stack.Screen
+  name="RectifierLot"
+  component={RectifierLotScreen}
+  options={{ headerShown: false }}
+/>
+<Stack.Screen
+  name="PasseportPdfPreview"
+  component={PasseportPdfPreviewScreen}
+  options={{ headerShown: false }}
+/>
+<Stack.Screen
+  name="ParametresEntreprise"
+  component={ParametresEntrepriseScreen}
+  options={{ headerShown: false }}
+/>
+<Stack.Screen
+  name="CertifTrackHome"
+  component={CertifTrackHomeScreen}
+  options={{ title: '🛡️ CertifTrack' }}
+/>
+<Stack.Screen
+  name="ReferentielDetail"
+  component={ReferentielDetailScreen}
+  options={{ title: 'Détail référentiel' }}
+/>
+<Stack.Screen
+  name="EngagementForm"
+  component={EngagementFormScreen}
+  options={{ title: 'Engagement certification' }}
 />
       </Stack.Navigator>
     </NavigationContainer>

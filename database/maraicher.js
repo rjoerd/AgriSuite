@@ -275,6 +275,152 @@ export function insertRecolte(recolte) {
   return result.lastInsertRowId;
 }
 
+
+// ============================================================
+// Patch — database/maraicher.js — v3 (correction duplication LEFT JOIN)
+// Phase 3 / Session 4 corrective bis
+//
+// PROBLÈME RÉSOLU :
+//   Le LEFT JOIN sur 'lots' dupliquait une récolte autant de fois qu'il
+//   y avait de lots la référençant. Dans tes données : récolte 2 → 3
+//   lots pointent dessus → 3 lignes dans le résultat → React crashe sur
+//   "duplicate key".
+//
+// SOLUTION :
+//   GROUP BY r.id avec agrégations :
+//     - MIN(l.id) pour récupérer le lot le plus ancien (probablement
+//       le "vrai" lot, les autres étant des erreurs de double rattachement)
+//     - COUNT(l.id) pour exposer combien de lots la référencent (utile
+//       pour détecter les anomalies)
+//
+// REMPLACE getAllRecoltesMaraicheres et getRecolteById de la v2.
+// ============================================================
+
+/**
+ * Retourne toutes les récoltes maraîchères, enrichies de :
+ *   - culture_nom, culture_code, planche_nom, parcelle_id, site_code
+ *   - est_rattachee_a_lot (1 si au moins un lot la référence, 0 sinon)
+ *   - lot_code, lot_id (le PREMIER lot rattaché si plusieurs — anomalie BIO)
+ *   - nb_lots_rattaches (>= 2 → anomalie de double rattachement à corriger)
+ */
+export function getAllRecoltesMaraicheres(limitDays = 60, cultureCode = null) {
+  const dateMin = new Date();
+  dateMin.setDate(dateMin.getDate() - limitDays);
+  const dateMinISO = dateMin.toISOString().split('T')[0];
+
+  // GROUP BY r.id pour ne ramener qu'une ligne par récolte, même si
+  // plusieurs lots la référencent (cas de double rattachement à
+  // détecter via nb_lots_rattaches).
+  const baseSQL = `
+    SELECT r.*,
+           p.nom as planche_nom,
+           p.parcelle_id,
+           c.culture_id as culture_id,
+           cu.nom_fr as culture_nom,
+           cu.code as culture_code,
+           s.code as site_code,
+           CASE WHEN COUNT(l.id) > 0 THEN 1 ELSE 0 END as est_rattachee_a_lot,
+           MIN(l.code_lot) as lot_code,
+           MIN(l.id) as lot_id,
+           COUNT(l.id) as nb_lots_rattaches
+    FROM recoltes_maraicheres r
+    JOIN planches p ON r.planche_id = p.id
+    JOIN cultures_maraicheres_en_cours c ON r.culture_en_cours_id = c.id
+    JOIN cultures cu ON c.culture_id = cu.id
+    JOIN sites s ON r.site_id = s.id
+    LEFT JOIN lots l ON l.recolte_maraichere_id = r.id
+                     AND l.est_rectifie_par IS NULL
+    WHERE r.date_recolte >= ?`;
+
+  if (cultureCode) {
+    return db.getAllSync(
+      baseSQL + ` AND cu.code = ?
+       GROUP BY r.id
+       ORDER BY r.date_recolte DESC, r.id DESC`,
+      [dateMinISO, cultureCode]
+    );
+  }
+
+  return db.getAllSync(
+    baseSQL + `
+     GROUP BY r.id
+     ORDER BY r.date_recolte DESC, r.id DESC`,
+    [dateMinISO]
+  );
+}
+
+/**
+ * Retourne une récolte par son ID, avec les mêmes enrichissements que
+ * getAllRecoltesMaraicheres (incluant nb_lots_rattaches pour détection
+ * anomalie).
+ */
+export function getRecolteById(id) {
+  return db.getFirstSync(
+    `SELECT r.*,
+            p.nom as planche_nom,
+            p.parcelle_id,
+            c.culture_id as culture_id,
+            cu.nom_fr as culture_nom,
+            cu.code as culture_code,
+            s.code as site_code,
+            CASE WHEN COUNT(l.id) > 0 THEN 1 ELSE 0 END as est_rattachee_a_lot,
+            MIN(l.code_lot) as lot_code,
+            MIN(l.id) as lot_id,
+            COUNT(l.id) as nb_lots_rattaches
+     FROM recoltes_maraicheres r
+     JOIN planches p ON r.planche_id = p.id
+     JOIN cultures_maraicheres_en_cours c ON r.culture_en_cours_id = c.id
+     JOIN cultures cu ON c.culture_id = cu.id
+     JOIN sites s ON r.site_id = s.id
+     LEFT JOIN lots l ON l.recolte_maraichere_id = r.id
+                      AND l.est_rectifie_par IS NULL
+     WHERE r.id = ?
+     GROUP BY r.id`,
+    [id]
+  );
+}
+
+// ============================================================
+// FONCTION DE DIAGNOSTIC — Anomalies de double rattachement
+// ============================================================
+
+/**
+ * Retourne la liste des récoltes rattachées à 2+ lots non-rectifiés.
+ * Utilisable depuis un écran d'admin / debug pour identifier les
+ * incohérences à corriger (Session 5 — mécanisme rectification).
+ *
+ * Retourne :
+ * [
+ *   {
+ *     recolte_id: 2,
+ *     date_recolte: '2026-04-26',
+ *     culture_nom: 'Gingembre',
+ *     quantite_kg: 50,
+ *     nb_lots: 3,
+ *     codes_lots: 'MDG-2026-D-GIN-002, MDG-2026-D-GIN-003, MDG-2026-D-GIN-005'
+ *   },
+ *   ...
+ * ]
+ */
+export function getRecoltesEnDoubleRattachement() {
+  return db.getAllSync(
+    `SELECT r.id as recolte_id,
+            r.date_recolte,
+            r.quantite_kg,
+            cu.nom_fr as culture_nom,
+            COUNT(l.id) as nb_lots,
+            GROUP_CONCAT(l.code_lot, ', ') as codes_lots
+     FROM recoltes_maraicheres r
+     JOIN cultures_maraicheres_en_cours c ON r.culture_en_cours_id = c.id
+     JOIN cultures cu ON c.culture_id = cu.id
+     LEFT JOIN lots l ON l.recolte_maraichere_id = r.id
+                      AND l.est_rectifie_par IS NULL
+     GROUP BY r.id
+     HAVING COUNT(l.id) > 1
+     ORDER BY nb_lots DESC, r.id DESC`
+  );
+}
+
 // ─────────────────────────────────────────────
 // FUMURE ORGANIQUE — CRUD + calcul disponible
 // ─────────────────────────────────────────────

@@ -109,3 +109,46 @@ export function initCropEngine() {
     );
   `);
 }
+
+// ============================================================
+// Patch — database/cropEngine.js
+// Phase 3 / Session 4
+//
+// Le fichier actuel n'expose que initCropEngine(). On ajoute deux helpers
+// CRUD lecture nécessaires pour les écrans M4 ExportTrack (LotListScreen
+// et LotProductionFormScreen).
+//
+// À AJOUTER À LA FIN du fichier database/cropEngine.js, juste après la
+// fermeture de initCropEngine().
+// ============================================================
+
+// ─────────────────────────────────────────────
+// CRUD — Cultures (lecture)
+// ─────────────────────────────────────────────
+
+/**
+ * Retourne toutes les cultures actives, triées par nom français.
+ * Utilisé par les écrans qui ont besoin d'une liste de cultures
+ * (sélecteurs de formulaire, indexation pour affichage).
+ */
+export function getAllCultures() {
+  return db.getAllSync(
+    `SELECT * FROM cultures WHERE actif = 1 ORDER BY nom_fr`
+  );
+}
+
+/**
+ * Retourne une culture par son identifiant.
+ */
+export function getCultureById(id) {
+  return db.getFirstSync(`SELECT * FROM cultures WHERE id = ?`, [id]);
+}
+
+/**
+ * Retourne une culture par son code unique (ex: 'gingembre').
+ * Utile pour la résolution code culture → ID lors d'imports
+ * ou de génération de codes lot.
+ */
+export function getCultureByCode(code) {
+  return db.getFirstSync(`SELECT * FROM cultures WHERE code = ?`, [code]);
+}

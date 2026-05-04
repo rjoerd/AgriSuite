@@ -2,15 +2,15 @@
 // AgriSuite Madagascar — Module M4 ExportTrack
 // database/exportTrack.js
 //
-// Phase 3 — Session 2
+// Phase 3 — Sessions 2-4 (avec corrections Session 4B)
 // 12 tables SQLite : filière production + filière collecte unifiées
 // CRUD + helpers traçabilité + génération code lot + seed idempotent
 //
-// Pattern aligné sur maraicher.js et foragePro.js :
-//   - Instance SQLite locale (pas de getDb() global)
-//   - Seed idempotent via COUNT > 0
-//   - Migrations ALTER TABLE try/catch pour évolutions
-//   - Toutes les opérations en transactions implicites
+// CORRECTIONS Session 4B :
+//   - Contrainte CHECK lots assouplie pour la filière collecte
+//     (fournisseur_id devient optionnel — multi-fournisseurs supportés)
+//   - insertLotProduction : protection anti-doublon récolte source
+//   - insertLotCollecte : validation zone uniquement (pas fournisseur)
 // ============================================================
 
 import * as SQLite from 'expo-sqlite';
@@ -59,6 +59,8 @@ export const initExportTrack = () => {
   `);
 
   // -- 3. Lots (cœur du module — filière A + B unifiées)
+  // CORRECTION Session 4B : la contrainte CHECK pour la collecte n'exige
+  // plus fournisseur_id NOT NULL (un lot peut être multi-fournisseurs).
   db.execSync(`
     CREATE TABLE IF NOT EXISTS lots (
       id                      INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -92,9 +94,9 @@ export const initExportTrack = () => {
       FOREIGN KEY (recolte_maraichere_id) REFERENCES recoltes_maraicheres(id),
       FOREIGN KEY (est_rectifie_par) REFERENCES lots(id),
       CHECK (
-        (filiere = 'production' AND parcelle_id IS NOT NULL AND fournisseur_id IS NULL)
+        (filiere = 'production' AND parcelle_id IS NOT NULL AND site_id IS NOT NULL)
         OR
-        (filiere = 'collecte' AND fournisseur_id IS NOT NULL AND parcelle_id IS NULL)
+        (filiere = 'collecte' AND zone_collecte_code IS NOT NULL AND parcelle_id IS NULL)
       )
     );
   `);
@@ -311,13 +313,28 @@ export const initExportTrack = () => {
   `);
 
   try { db.execSync(`CREATE INDEX IF NOT EXISTS idx_docs_expedition ON documents_export(expedition_id);`); } catch (e) {}
+
+  // ─── Migration : aligne statut sur est_cloture ───
+  // Les lots clôturés avant la correction Session 6 ont est_cloture=1
+  // mais statut='en_cours'. On synchronise (idempotent).
+  try {
+    db.runSync(
+      `UPDATE lots SET statut = 'cloture'
+       WHERE est_cloture = 1 AND statut != 'cloture'`
+    );
+    db.runSync(
+      `UPDATE lots SET statut = 'en_cours'
+       WHERE est_cloture = 0 AND statut = 'cloture'`
+    );
+  } catch (e) {
+    console.warn('[ExportTrack] Migration statut/est_cloture sautée :', e.message);
+  }
 };
 
 // ============================================================
 // HELPERS — GÉNÉRATION CODE LOT
 // ============================================================
 
-// Codes culture standardisés (3 lettres)
 export const CODE_CULTURE = {
   gingembre: 'GIN',
   vanille: 'VAN',
@@ -332,12 +349,6 @@ export const CODE_CULTURE = {
   fruits_seches: 'FRS',
 };
 
-/**
- * Génère le prochain code lot unique pour une combinaison filière+zone+culture+année.
- * Format : MDG-AAAA-XXX-CCC-NNN
- * Exemple : MDG-2026-D-GIN-001 (gingembre Site D, lot 1 de 2026)
- *           MDG-2026-ANJ-VAN-003 (vanille collectée Analanjirofo, lot 3)
- */
 export const genererCodeLot = (codeZoneOuSite, codeCulture, annee = null) => {
   const an = annee || new Date().getFullYear();
   const prefixe = `MDG-${an}-${codeZoneOuSite}-${codeCulture}-`;
@@ -359,10 +370,6 @@ export const genererCodeLot = (codeZoneOuSite, codeCulture, annee = null) => {
   return `${prefixe}${String(prochainNumero).padStart(3, '0')}`;
 };
 
-/**
- * Génère le code d'un lot composite (préfixe C avant le numéro).
- * Exemple : MDG-2026-D-GIN-C001
- */
 export const genererCodeLotComposite = (codeZoneOuSite, codeCulture, annee = null) => {
   const an = annee || new Date().getFullYear();
   const prefixe = `MDG-${an}-${codeZoneOuSite}-${codeCulture}-C`;
@@ -460,7 +467,15 @@ export const getAllLots = (filtres = {}) => {
     sql += ` AND filiere = ?`;
     params.push(filtres.filiere);
   }
-  if (filtres.statut) {
+  // Filtre statut → mappé sur est_cloture (source de vérité fiable).
+  // Évite les désynchronisations entre est_cloture et statut sur les
+  // données historiques.
+  if (filtres.statut === 'en_cours') {
+    sql += ` AND est_cloture = 0`;
+  } else if (filtres.statut === 'cloture') {
+    sql += ` AND est_cloture = 1`;
+  } else if (filtres.statut) {
+    // Autre valeur de statut : on respecte le filtre nominal
     sql += ` AND statut = ?`;
     params.push(filtres.statut);
   }
@@ -486,13 +501,31 @@ export const getLotByCode = (codeLot) => {
 
 /**
  * Crée un lot filière A (production) — lié à une parcelle.
- * recolteMaraichereId est optionnel : si fourni, le lot est rattaché à une récolte
- * du module MaraîcherGuide (cas du gingembre Site D).
+ * SÉCURITÉ : si recolte_maraichere_id est fourni, vérifie qu'aucun autre
+ * lot non-rectifié n'utilise déjà cette récolte (anti-doublon BIO).
  */
 export const insertLotProduction = (lot) => {
   if (!lot.parcelle_id || !lot.site_id) {
     throw new Error('Lot production : parcelle_id et site_id requis');
   }
+
+  // Vérification anti-doublon récolte source
+  if (lot.recolte_maraichere_id) {
+    const existant = db.getFirstSync(
+      `SELECT id, code_lot FROM lots
+       WHERE recolte_maraichere_id = ?
+         AND est_rectifie_par IS NULL`,
+      [lot.recolte_maraichere_id]
+    );
+    if (existant) {
+      throw new Error(
+        `Cette récolte est déjà rattachée au lot ${existant.code_lot}. ` +
+        `Une récolte ne peut alimenter qu'un seul lot export ` +
+        `(traçabilité BIO/Fairtrade).`
+      );
+    }
+  }
+
   const result = db.runSync(
     `INSERT INTO lots
      (code_lot, filiere, parcelle_id, site_id, culture_id, variete,
@@ -512,12 +545,21 @@ export const insertLotProduction = (lot) => {
 };
 
 /**
- * Crée un lot filière B (collecte) — lié à un fournisseur.
+ * Crée un lot filière B (collecte) — lié à une zone (pas un fournisseur).
+ *
+ * fournisseur_id est OPTIONNEL : la majorité des lots collecte sont
+ * multi-fournisseurs (alimentés par plusieurs paysans via plusieurs
+ * bons), donc ce champ reste NULL. La traçabilité ascendante se fait
+ * via la table bons_collecte.
  */
 export const insertLotCollecte = (lot) => {
-  if (!lot.fournisseur_id || !lot.zone_collecte_code) {
-    throw new Error('Lot collecte : fournisseur_id et zone_collecte_code requis');
+  if (!lot.zone_collecte_code) {
+    throw new Error('Lot collecte : zone_collecte_code requis');
   }
+  if (lot.parcelle_id || lot.site_id) {
+    throw new Error('Lot collecte : ne doit pas avoir parcelle_id ou site_id');
+  }
+
   const result = db.runSync(
     `INSERT INTO lots
      (code_lot, filiere, fournisseur_id, zone_collecte_code, culture_id, variete,
@@ -525,7 +567,9 @@ export const insertLotCollecte = (lot) => {
       quantite_brute_kg, protocole_post_recolte, statut, cree_par, notes)
      VALUES (?, 'collecte', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
-      lot.code_lot, lot.fournisseur_id, lot.zone_collecte_code,
+      lot.code_lot,
+      lot.fournisseur_id || null,  // optionnel : NULL si multi-fournisseurs
+      lot.zone_collecte_code,
       lot.culture_id, lot.variete || null,
       lot.date_debut, lot.date_fin || null, lot.est_cloture ? 1 : 0,
       lot.quantite_brute_kg || null, lot.protocole_post_recolte || null,
@@ -535,16 +579,13 @@ export const insertLotCollecte = (lot) => {
   return result.lastInsertRowId;
 };
 
-/**
- * Clôture un lot : fixe date_fin, est_cloture=1, valide_par/valide_le.
- * Append-only : ne modifie pas la création initiale, ajoute juste la validation.
- */
 export const cloturerLot = (id, valide_par) => {
   const now = new Date().toISOString();
   db.runSync(
     `UPDATE lots SET
        date_fin = COALESCE(date_fin, ?),
        est_cloture = 1,
+       statut = 'cloture',
        valide_par = ?,
        valide_le = ?
      WHERE id = ? AND est_cloture = 0`,
@@ -553,20 +594,211 @@ export const cloturerLot = (id, valide_par) => {
 };
 
 /**
- * Crée un lot rectificatif qui annule et remplace un lot existant.
- * L'original est marqué comme rectifié (champ est_rectifie_par).
+ * Rectifie un lot avec création d'un nouveau lot rectificatif.
+ *
+ * @param {number} idOriginal - ID du lot à rectifier
+ * @param {object} lotCorrige - Champs modifiés du lot
+ * @param {object} optionsCopie - Options de copie des éléments liés
+ *   - copierEtapes: bool — copier les étapes post-récolte ?
+ *   - copierAnalyses: bool — copier les analyses qualité ?
+ *   - copierConditionnements: bool — copier les conditionnements ?
+ *   - copierBons: bool — copier les bons de collecte (filière B) ?
+ *   - marquerAReVerifier: bool — ajouter mention "à re-vérifier" dans les
+ *     notes des éléments copiés (recommandé sauf rectif simple)
+ *
+ * @returns {number} ID du nouveau lot rectificatif
  */
-export const rectifierLot = (idOriginal, lotCorrige) => {
+export const rectifierLot = (idOriginal, lotCorrige, optionsCopie = {}) => {
   const original = getLotById(idOriginal);
   if (!original) throw new Error(`Lot ${idOriginal} introuvable`);
 
-  let nouveauId;
-  if (original.filiere === 'production') {
-    nouveauId = insertLotProduction({ ...original, ...lotCorrige });
+  const {
+    copierEtapes = false,
+    copierAnalyses = false,
+    copierConditionnements = false,
+    copierBons = false,
+    marquerAReVerifier = false,
+  } = optionsCopie;
+
+  // ─── Génération nouveau code lot ───
+  const segments = original.code_lot.split('-');
+  let nouveauCodeLot;
+  if (segments.length >= 5 && segments[0] === 'MDG') {
+    const annee = parseInt(segments[1], 10) || new Date().getFullYear();
+    const codeZoneOuSite = segments[2];
+    const codeCulture = segments[3];
+    nouveauCodeLot = genererCodeLot(codeZoneOuSite, codeCulture, annee);
   } else {
-    nouveauId = insertLotCollecte({ ...original, ...lotCorrige });
+    nouveauCodeLot = `${original.code_lot}-R${Date.now()}`;
   }
-  db.runSync(`UPDATE lots SET est_rectifie_par = ? WHERE id = ?`, [nouveauId, idOriginal]);
+
+  const payload = {
+    ...original,
+    ...lotCorrige,
+    code_lot: nouveauCodeLot,
+    id: undefined,
+    est_rectifie_par: null,
+    cree_le: undefined,
+  };
+
+  // ─── Pré-marquage pour libérer la récolte source ───
+  const aRecolteSource = original.filiere === 'production'
+                         && original.recolte_maraichere_id != null;
+
+  if (aRecolteSource) {
+    db.runSync(
+      `UPDATE lots SET est_rectifie_par = -1 WHERE id = ?`,
+      [idOriginal]
+    );
+  }
+
+  let nouveauId;
+  try {
+    if (original.filiere === 'production') {
+      nouveauId = insertLotProduction(payload);
+    } else {
+      nouveauId = insertLotCollecte(payload);
+    }
+  } catch (err) {
+    if (aRecolteSource) {
+      db.runSync(
+        `UPDATE lots SET est_rectifie_par = NULL WHERE id = ?`,
+        [idOriginal]
+      );
+    }
+    throw err;
+  }
+
+  // ─── Copie sélective des éléments liés ───
+  // Préfixe à ajouter aux notes si "à re-vérifier" coché
+  const prefixeReVerifier = marquerAReVerifier
+    ? `[COPIÉ depuis lot rectifié ${original.code_lot} — à RE-VÉRIFIER]`
+    : `[COPIÉ depuis lot rectifié ${original.code_lot}]`;
+
+  const ajouterPrefixe = (notesOriginales) => {
+    if (!notesOriginales) return prefixeReVerifier;
+    return `${prefixeReVerifier}\n${notesOriginales}`;
+  };
+
+  try {
+    // Copie ÉTAPES POST-RÉCOLTE
+    if (copierEtapes) {
+      const etapes = getEtapesByLot(idOriginal);
+      etapes.forEach((e) => {
+        // Parse parametres si JSON string
+        let parametres = e.parametres;
+        if (typeof parametres === 'string') {
+          try { parametres = JSON.parse(parametres); } catch (err) {}
+        }
+        insertEtape({
+          lot_id: nouveauId,
+          ordre: e.ordre,
+          type_etape: e.type_etape,
+          date_debut: e.date_debut,
+          date_fin: e.date_fin,
+          quantite_entree_kg: e.quantite_entree_kg,
+          quantite_sortie_kg: e.quantite_sortie_kg,
+          perte_kg: e.perte_kg,
+          taux_perte_pct: e.taux_perte_pct,
+          parametres: parametres,
+          ccp_id: e.ccp_id,
+          conformite_ccp: e.conformite_ccp,
+          operateur: e.operateur,
+          notes: ajouterPrefixe(e.notes),
+          photo: e.photo,
+        });
+      });
+    }
+
+    // Copie ANALYSES QUALITÉ
+    if (copierAnalyses) {
+      const analyses = getAnalysesByLot(idOriginal);
+      analyses.forEach((a) => {
+        insertAnalyse({
+          lot_id: nouveauId,
+          date_analyse: a.date_analyse,
+          type_analyse: a.type_analyse,
+          laboratoire: a.laboratoire,
+          valeur: a.valeur,
+          unite: a.unite,
+          valeur_texte: a.valeur_texte,
+          seuil_min: a.seuil_min,
+          seuil_max: a.seuil_max,
+          conforme: a.conforme,
+          rapport_pdf: a.rapport_pdf,
+          notes: ajouterPrefixe(a.notes),
+        });
+      });
+    }
+
+    // Copie CONDITIONNEMENTS
+    if (copierConditionnements) {
+      const conds = getConditionnementsByLot(idOriginal);
+      conds.forEach((c) => {
+        // Parse conditions_stockage si JSON string
+        let conditionsStockage = c.conditions_stockage;
+        if (typeof conditionsStockage === 'string') {
+          try { conditionsStockage = JSON.parse(conditionsStockage); } catch (err) {}
+        }
+        insertConditionnement({
+          lot_id: nouveauId,
+          date_conditionnement: c.date_conditionnement,
+          type_emballage: c.type_emballage,
+          unite_taille: c.unite_taille,
+          nombre_unites: c.nombre_unites,
+          poids_total_kg: c.poids_total_kg,
+          etiquette_recto: c.etiquette_recto,
+          etiquette_verso: c.etiquette_verso
+            ? `${c.etiquette_verso}\n${prefixeReVerifier}`
+            : prefixeReVerifier,
+          numero_serie_debut: c.numero_serie_debut,
+          numero_serie_fin: c.numero_serie_fin,
+          lieu_stockage: c.lieu_stockage,
+          conditions_stockage: conditionsStockage,
+          operateur: c.operateur,
+        });
+      });
+    }
+
+    // Copie BONS DE COLLECTE (filière B uniquement)
+    if (copierBons && original.filiere === 'collecte') {
+      const bons = getBonsCollecteByLot(idOriginal);
+      bons.forEach((b) => {
+        // On reproduit l'INSERT directement parce qu'insertBonCollecte
+        // pourrait avoir des effets de bord (calcul totaux, alertes…)
+        db.runSync(
+          `INSERT INTO bons_collecte
+           (lot_id, fournisseur_id, numero_bon, date_collecte, zone_collecte_code,
+            quantite_kg, prix_unitaire_ar, prix_total_ar, qualite, photo,
+            notes, saisi_par)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          [
+            nouveauId, b.fournisseur_id, b.numero_bon, b.date_collecte,
+            b.zone_collecte_code, b.quantite_kg, b.prix_unitaire_ar,
+            b.prix_total_ar, b.qualite, b.photo,
+            ajouterPrefixe(b.notes), b.saisi_par,
+          ]
+        );
+      });
+    }
+  } catch (err) {
+    // Rollback complet si la copie échoue
+    if (aRecolteSource) {
+      db.runSync(
+        `UPDATE lots SET est_rectifie_par = NULL WHERE id = ?`,
+        [idOriginal]
+      );
+    }
+    // On supprime aussi le lot rectificatif partiellement créé
+    db.runSync(`DELETE FROM lots WHERE id = ?`, [nouveauId]);
+    throw new Error(`Erreur lors de la copie des éléments liés : ${err.message}`);
+  }
+
+  // ─── Mise à jour finale avec le vrai id du rectificatif ───
+  db.runSync(
+    `UPDATE lots SET est_rectifie_par = ? WHERE id = ?`,
+    [nouveauId, idOriginal]
+  );
   return nouveauId;
 };
 
@@ -615,9 +847,6 @@ export const insertBonCollecte = (bon) => {
   return result.lastInsertRowId;
 };
 
-/**
- * Génère le prochain numéro de bon de collecte : BC-AAAA-NNNNN
- */
 export const genererNumeroBonCollecte = (annee = null) => {
   const an = annee || new Date().getFullYear();
   const prefixe = `BC-${an}-`;
@@ -649,7 +878,6 @@ export const getEtapesByLot = (lotId) => {
 };
 
 export const insertEtape = (e) => {
-  // Calcul auto perte si entree+sortie connus
   let perte = e.perte_kg;
   let tauxPerte = e.taux_perte_pct;
   if (e.quantite_entree_kg != null && e.quantite_sortie_kg != null) {
@@ -676,9 +904,6 @@ export const insertEtape = (e) => {
   return result.lastInsertRowId;
 };
 
-/**
- * Donne le prochain numéro d'ordre dans la séquence post-récolte d'un lot.
- */
 export const getProchainOrdreEtape = (lotId) => {
   const result = db.getFirstSync(
     `SELECT MAX(ordre) AS max_ordre FROM etapes_post_recolte
@@ -702,7 +927,6 @@ export const getAnalysesByLot = (lotId) => {
 };
 
 export const insertAnalyse = (a) => {
-  // Conformité auto si seuils fournis
   let conforme = a.conforme;
   if (conforme == null && a.valeur != null) {
     if (a.seuil_min != null && a.seuil_max != null) {
@@ -817,10 +1041,6 @@ export const getExpeditionById = (id) => {
   return db.getFirstSync(`SELECT * FROM expeditions WHERE id = ?`, [id]);
 };
 
-/**
- * Crée une expédition + remplit la table de jointure expedition_lots.
- * lots: [{lot_id, quantite_kg}, ...]
- */
 export const insertExpedition = (exp, lots) => {
   const result = db.runSync(
     `INSERT INTO expeditions
@@ -892,21 +1112,10 @@ export const insertDocumentExport = (d) => {
 // HELPERS — TRAÇABILITÉ & QUANTITÉ
 // ============================================================
 
-/**
- * Calcule la quantité actuelle d'un lot à la volée depuis ses étapes
- * (décision D : pas de cache sur lots.quantite_actuelle_kg).
- *
- * Logique :
- *  - S'il existe des étapes : on prend la quantite_sortie_kg de la dernière étape
- *    qui en a une renseignée
- *  - Sinon : on prend lots.quantite_brute_kg (pour filière A) ou la somme
- *    des bons de collecte (filière B)
- */
 export const getQuantiteActuelleLot = (lotId) => {
   const lot = getLotById(lotId);
   if (!lot) return 0;
 
-  // Dernière étape avec quantite_sortie_kg renseignée
   const etape = db.getFirstSync(
     `SELECT quantite_sortie_kg FROM etapes_post_recolte
      WHERE lot_id = ? AND est_rectifie_par IS NULL AND quantite_sortie_kg IS NOT NULL
@@ -917,10 +1126,8 @@ export const getQuantiteActuelleLot = (lotId) => {
     return etape.quantite_sortie_kg;
   }
 
-  // Pas d'étape — on retourne la quantité brute initiale
   if (lot.quantite_brute_kg != null) return lot.quantite_brute_kg;
 
-  // Filière collecte sans brute saisie : somme des bons
   if (lot.filiere === 'collecte') {
     const r = db.getFirstSync(
       `SELECT SUM(quantite_kg) AS total FROM bons_collecte
@@ -932,10 +1139,6 @@ export const getQuantiteActuelleLot = (lotId) => {
   return 0;
 };
 
-/**
- * Reconstruit la traçabilité ascendante complète d'un lot pour génération PDF.
- * Si lot composite, descend récursivement sur les lots parents.
- */
 export const getTracabiliteAscendante = (lotId) => {
   const lot = getLotById(lotId);
   if (!lot) return null;
@@ -950,13 +1153,11 @@ export const getTracabiliteAscendante = (lotId) => {
     parents: [],
   };
 
-  // Filière B : bons de collecte
   if (lot.filiere === 'collecte') {
     tracabilite.bons_collecte = getBonsCollecteByLot(lotId);
     tracabilite.fournisseur = getFournisseurById(lot.fournisseur_id);
   }
 
-  // Lot composite : récursion sur les parents
   if (lot.est_composite) {
     const membres = db.getAllSync(
       `SELECT * FROM lot_composite_membres WHERE lot_composite_id = ?`,
@@ -978,19 +1179,16 @@ export const getTracabiliteAscendante = (lotId) => {
 // ============================================================
 
 const ZONES_COLLECTE_REFERENCE = [
-  // Côte Est — vanille, girofle, café, cacao, poivre, cannelle
   { code: 'ANJ', nom: 'Analanjirofo', region: 'Analanjirofo', latitude_centre: -16.9, longitude_centre: 49.7,
     cultures_principales: ['girofle', 'vanille', 'litchi'] },
   { code: 'ATS', nom: 'Atsinanana', region: 'Atsinanana', latitude_centre: -18.1, longitude_centre: 49.4,
     cultures_principales: ['vanille', 'litchi', 'cafe', 'poivre'] },
   { code: 'SAV', nom: 'SAVA', region: 'SAVA (Sambava-Antalaha-Vohémar-Andapa)', latitude_centre: -14.3, longitude_centre: 50.0,
     cultures_principales: ['vanille', 'cafe'] },
-  // Nord — cacao, ylang-ylang
   { code: 'SBR', nom: 'Sambirano', region: 'DIANA', latitude_centre: -13.8, longitude_centre: 48.5,
     cultures_principales: ['cacao', 'cafe'] },
   { code: 'NSB', nom: 'Nosy Be', region: 'DIANA', latitude_centre: -13.3, longitude_centre: 48.3,
     cultures_principales: ['ylang_ylang', 'vanille'] },
-  // Hautes Terres — fruits séchés, gingembre Site D voisin
   { code: 'ANA', nom: 'Analamanga', region: 'Analamanga', latitude_centre: -18.9, longitude_centre: 47.5,
     cultures_principales: ['fruits_seches', 'pomme_de_terre'] },
   { code: 'VAK', nom: 'Vakinankaratra', region: 'Vakinankaratra', latitude_centre: -19.9, longitude_centre: 47.0,
@@ -1002,7 +1200,6 @@ const ZONES_COLLECTE_REFERENCE = [
 export const seedExportTrack = () => {
   initExportTrack();
 
-  // Idempotence
   const count = db.getFirstSync(`SELECT COUNT(*) AS n FROM zones_collecte`);
   if (count && count.n > 0) {
     console.log(`[ExportTrack seed] ${count.n} zones déjà en base, seed sauté`);

@@ -96,13 +96,37 @@ export default function CultureFormScreen({ route, navigation }) {
   });
 
   useEffect(() => {
-    // Charger les cultures maraîchères actives depuis le CropEngine
-    const data = db.getAllSync(
-      `SELECT * FROM cultures 
-       WHERE categorie = 'maraichage' AND active = 1
-       ORDER BY priorite_ecole ASC, nom_fr ASC`
-    );
-    setCultures(data);
+    // Charger les cultures maraîchères actives depuis le CropEngine.
+    // Note : la table `cultures` utilise `actif` (sans 'e') — colonne définie
+    // dans cropEngine.js. Les colonnes `categorie` et `priorite_ecole` sont
+    // ajoutées en migration ALTER TABLE par seedMaraicher() (Phase 2).
+    try {
+      const data = db.getAllSync(
+        `SELECT * FROM cultures
+         WHERE categorie = 'maraichage' AND actif = 1
+         ORDER BY priorite_ecole ASC, nom_fr ASC`
+      );
+      setCultures(data);
+    } catch (err) {
+      console.error('[CultureForm] Erreur chargement cultures :', err);
+      // Fallback : si une colonne de tri (priorite_ecole) manque, on retente
+      // sans le tri, juste pour ne pas bloquer l'écran complètement.
+      try {
+        const data = db.getAllSync(
+          `SELECT * FROM cultures
+           WHERE categorie = 'maraichage' AND actif = 1
+           ORDER BY nom_fr ASC`
+        );
+        setCultures(data);
+      } catch (err2) {
+        console.error('[CultureForm] Fallback échoué :', err2);
+        Alert.alert(
+          'Erreur de base de données',
+          'Impossible de charger la liste des cultures. Détail : ' + err2.message
+        );
+        setCultures([]);
+      }
+    }
   }, []);
 
   const set = (key, val) => setForm((f) => ({ ...f, [key]: val }));

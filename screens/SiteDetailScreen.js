@@ -94,7 +94,22 @@ export default function SiteDetailScreen({ route, navigation }) {
           <Text style={styles.mapButtonText}>🗺️ Carte & Parcelles GPS</Text>
         </TouchableOpacity>
 
-        
+        {/* ── Historique récoltes — bouton secondaire ── */}
+        {/*
+          Le bouton est volontairement plus discret que les modules principaux :
+          c'est un raccourci utile mais qui ouvre une vue de consultation
+          (lecture seule de l'historique), pas un module à part entière.
+          Style aligné sur "Carte & Parcelles GPS" mais avec accent ambre
+          (cohérent avec ExportTrack quand l'historique mène à une création
+          de lot).
+        */}
+        <TouchableOpacity
+          style={styles.historiqueButton}
+          onPress={() => navigation.navigate('RecoltesHistory', { siteId: site.id })}
+        >
+          <Text style={styles.historiqueButtonText}>📊 Historique des récoltes</Text>
+        </TouchableOpacity>
+
         {/* ── Actions ── */}
         <Text style={styles.sectionActions}>Actions</Text>
 
@@ -133,6 +148,21 @@ const styles = StyleSheet.create({
   maraicherButtonText: { color: '#7ec87e', fontWeight: 'bold', fontSize: 16 },
   mapButton: { backgroundColor: '#1e3d1e', borderWidth: 1, borderColor: '#4a7a4a', borderRadius: 12, padding: 16, alignItems: 'center', marginBottom: 10 },
   mapButtonText: { color: '#7ec87e', fontWeight: 'bold', fontSize: 16 },
+  // ─── Historique récoltes — accent ambre (lien avec ExportTrack) ───
+  historiqueButton: {
+    backgroundColor: '#1e3320',
+    borderWidth: 1,
+    borderColor: '#d4a04a',
+    borderRadius: 12,
+    padding: 16,
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  historiqueButtonText: {
+    color: '#e8be78',
+    fontWeight: 'bold',
+    fontSize: 16,
+  },
   editButton: { backgroundColor: '#2a4a2a', borderRadius: 12, padding: 16, alignItems: 'center', marginBottom: 10 },
   editButtonText: { color: '#7ec87e', fontWeight: 'bold', fontSize: 16 },
   deleteButton: { borderWidth: 1, borderColor: '#8b2020', borderRadius: 12, padding: 16, alignItems: 'center', marginBottom: 8 },
