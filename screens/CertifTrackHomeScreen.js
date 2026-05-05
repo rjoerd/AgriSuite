@@ -21,20 +21,34 @@ import {
   getStatutColor,
   getTypeReferentielColor,
   getTypeReferentielLabel,
+  countAlertesActives,
+  getToutesAlertesActives,
 } from '../database/certifTrack';
 
 export default function CertifTrackHomeScreen({ navigation }) {
-  const [kpi, setKpi] = useState(null);
+const [kpi, setKpi] = useState(null);
   const [referentielsStats, setReferentielsStats] = useState([]);
   const [derniersEngagements, setDerniersEngagements] = useState([]);
+  const [alertesKpi, setAlertesKpi] = useState({ total: 0, critiques: 0, avertissements: 0 });
+  const [alertesActives, setAlertesActives] = useState([]);
   const [refreshing, setRefreshing] = useState(false);
 
   const loadData = () => {
     try {
-      setKpi(getKpiCertifTrack());
+setKpi(getKpiCertifTrack());
       setReferentielsStats(getStatsEngagementsParReferentiel());
       const all = getAllEngagements();
       setDerniersEngagements(all.slice(0, 5)); // 5 plus récents
+
+      // NOUVEAU Session 8 : charger les alertes globales
+      try {
+        setAlertesKpi(countAlertesActives());
+        const allAlertes = getToutesAlertesActives() || [];
+        setAlertesActives(allAlertes.slice(0, 3)); // top 3
+      } catch (e) {
+        setAlertesKpi({ total: 0, critiques: 0, avertissements: 0 });
+        setAlertesActives([]);
+      }
     } catch (error) {
       console.error('Erreur chargement CertifTrack:', error);
       Alert.alert('Erreur', 'Impossible de charger les données CertifTrack');
@@ -99,7 +113,46 @@ export default function CertifTrackHomeScreen({ navigation }) {
           </View>
         </View>
       )}
+{/* NOUVEAU Session 8 : Bandeau alertes conformité globales */}
+      {alertesKpi.total > 0 && (
+        <View style={styles.alertesGlobales}>
+          <View style={styles.alertesGlobalesHeader}>
+            <Text style={styles.alertesGlobalesTitre}>
+              🚨 Alertes conformité actives
+            </Text>
+            <View style={styles.alertesGlobalesStats}>
+              {alertesKpi.critiques > 0 && (
+                <Text style={styles.alertesGlobalesCritiques}>
+                  {alertesKpi.critiques} critique{alertesKpi.critiques > 1 ? 's' : ''}
+                </Text>
+              )}
+              {alertesKpi.avertissements > 0 && (
+                <Text style={styles.alertesGlobalesAvertissements}>
+                  {alertesKpi.avertissements} avert.
+                </Text>
+              )}
+            </View>
+          </View>
 
+          {alertesActives.map((a) => (
+            <View key={a.id} style={styles.alerteApercu}>
+              <Text style={styles.alerteApercuTitre} numberOfLines={1}>
+                {a.severite === 'critique' ? '🚨 ' : '⚠️ '}
+                {a.titre}
+              </Text>
+              <Text style={styles.alerteApercuRef}>
+                {a.ref_nom_court} · {a.cible_type} #{a.cible_id}
+              </Text>
+            </View>
+          ))}
+
+          {alertesKpi.total > 3 && (
+            <Text style={styles.alertesGlobalesPlus}>
+              + {alertesKpi.total - 3} autre{alertesKpi.total - 3 > 1 ? 's' : ''} alerte{alertesKpi.total - 3 > 1 ? 's' : ''}
+            </Text>
+          )}
+        </View>
+      )}
       {/* Sous-banner cibles */}
       {kpi && (kpi.lots_engages > 0 || kpi.sites_engages > 0 || kpi.cultures_engagees > 0) && (
         <View style={styles.ciblesBanner}>
@@ -257,6 +310,65 @@ const styles = StyleSheet.create({
     backgroundColor: '#3a5a3a',
   },
 
+  // NOUVEAU Session 8 — Alertes globales
+  alertesGlobales: {
+    backgroundColor: '#2a2014',
+    borderRadius: 10,
+    padding: 12,
+    marginBottom: 12,
+    borderLeftWidth: 4,
+    borderLeftColor: '#cc4444',
+  },
+  alertesGlobalesHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  alertesGlobalesTitre: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#e8be78',
+  },
+  alertesGlobalesStats: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  alertesGlobalesCritiques: {
+    fontSize: 11,
+    color: '#ff8888',
+    fontWeight: '700',
+  },
+  alertesGlobalesAvertissements: {
+    fontSize: 11,
+    color: '#e8be78',
+    fontWeight: '600',
+  },
+  alerteApercu: {
+    backgroundColor: '#1a2e1a',
+    borderRadius: 6,
+    padding: 8,
+    marginBottom: 4,
+  },
+  alerteApercuTitre: {
+    fontSize: 12,
+    color: '#fff',
+    fontWeight: '500',
+  },
+  alerteApercuRef: {
+    fontSize: 10,
+    color: '#a8c8a8',
+    marginTop: 2,
+    fontStyle: 'italic',
+  },
+  alertesGlobalesPlus: {
+    fontSize: 11,
+    color: '#7a9a7a',
+    fontStyle: 'italic',
+    textAlign: 'center',
+    marginTop: 4,
+  },
+  
   ciblesBanner: {
     backgroundColor: '#243d24',
     borderRadius: 8,

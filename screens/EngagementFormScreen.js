@@ -1,12 +1,17 @@
 // screens/EngagementFormScreen.js
 // Formulaire de création/modification d'un engagement de certification
-// Phase 3 Session 7
+// Phase 3 Session 7 + Session 8
+//
+// Évolution Session 8 :
+//   - En mode édition : carte score audit blanc avec barre progression + KPI
+//   - En mode édition : bouton "🔍 Ouvrir l'audit blanc complet" → AuditBlancScreen
+//   - En mode édition : alertes actives + non-conformités majeures visibles
 //
 // Usage :
 //   navigation.navigate('EngagementForm', { cibleType: 'lot', cibleId: 42, cibleLabel: 'MDG-2026-D-GIN-001' })
 //   navigation.navigate('EngagementForm', { engagementId: 5 }) → mode édition
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -18,14 +23,17 @@ import {
   Modal,
   FlatList,
 } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import {
   getReferentiels,
-  getReferentielById,
   creerEngagement,
   updateEngagement,
   supprimerEngagement,
   getStatutLabel,
   getStatutColor,
+  getScoreEngagement,
+  getAlertesActivesByEngagement,
+  countExigencesByReferentiel,
 } from '../database/certifTrack';
 import * as SQLite from 'expo-sqlite';
 
@@ -36,7 +44,8 @@ const STATUTS = ['vise', 'en_conversion', 'certifie', 'suspendu', 'abandonne'];
 // Helper pour récupérer un engagement existant
 const getEngagementById = (id) => {
   return db.getFirstSync(
-    `SELECT e.*, r.nom_court as ref_nom_court, r.nom_complet as ref_nom_complet
+    `SELECT e.*, r.nom_court as ref_nom_court, r.nom_complet as ref_nom_complet,
+            r.id as ref_id
      FROM engagements_certif e
      JOIN referentiels r ON e.referentiel_id = r.id
      WHERE e.id = ?`,
@@ -49,7 +58,7 @@ export default function EngagementFormScreen({ route, navigation }) {
   const { engagementId, cibleType, cibleId, cibleLabel } = route.params || {};
   const isEdition = !!engagementId;
 
-  // États
+  // États formulaire
   const [referentiels, setReferentiels] = useState([]);
   const [referentielId, setReferentielId] = useState(null);
   const [referentielSelectionne, setReferentielSelectionne] = useState(null);
@@ -62,39 +71,55 @@ export default function EngagementFormScreen({ route, navigation }) {
   const [numeroCertificat, setNumeroCertificat] = useState('');
   const [notes, setNotes] = useState('');
 
-  // Cible (uniquement utilisé en mode création)
+  // Cible
   const [editCibleType, setEditCibleType] = useState(cibleType || 'lot');
   const [editCibleId, setEditCibleId] = useState(cibleId || null);
   const [editCibleLabel, setEditCibleLabel] = useState(cibleLabel || '');
 
-  // Modal sélection référentiel
+  // NOUVEAU Session 8 : score + alertes
+  const [score, setScore] = useState(null);
+  const [nbExigences, setNbExigences] = useState(0);
+  const [nbAlertesActives, setNbAlertesActives] = useState(0);
+
+  // Modal
   const [showReferentielModal, setShowReferentielModal] = useState(false);
 
-  useEffect(() => {
-    // Charger la liste des référentiels actifs
-    setReferentiels(getReferentiels(true));
+  // Chargement à chaque focus pour rafraîchir le score après audit
+  useFocusEffect(
+    useCallback(() => {
+      setReferentiels(getReferentiels(true));
 
-    // Si édition, pré-remplir
-    if (isEdition) {
-      const eng = getEngagementById(engagementId);
-      if (eng) {
-        setReferentielId(eng.referentiel_id);
-        setReferentielSelectionne({
-          id: eng.referentiel_id,
-          nom_court: eng.ref_nom_court,
-          nom_complet: eng.ref_nom_complet,
-        });
-        setStatut(eng.statut);
-        setDateEngagement(eng.date_engagement);
-        setDateDebutConversion(eng.date_debut_conversion || '');
-        setOrganismeCertificateur(eng.organisme_certificateur || '');
-        setNumeroCertificat(eng.numero_certificat || '');
-        setNotes(eng.notes || '');
-        setEditCibleType(eng.cible_type);
-        setEditCibleId(eng.cible_id);
+      if (isEdition) {
+        const eng = getEngagementById(engagementId);
+        if (eng) {
+          setReferentielId(eng.referentiel_id);
+          setReferentielSelectionne({
+            id: eng.referentiel_id,
+            nom_court: eng.ref_nom_court,
+            nom_complet: eng.ref_nom_complet,
+          });
+          setStatut(eng.statut);
+          setDateEngagement(eng.date_engagement);
+          setDateDebutConversion(eng.date_debut_conversion || '');
+          setOrganismeCertificateur(eng.organisme_certificateur || '');
+          setNumeroCertificat(eng.numero_certificat || '');
+          setNotes(eng.notes || '');
+          setEditCibleType(eng.cible_type);
+          setEditCibleId(eng.cible_id);
+
+          // Session 8 : score + alertes + nb exigences
+          try { setScore(getScoreEngagement(engagementId)); }
+          catch (e) { setScore(null); }
+          try { setNbExigences(countExigencesByReferentiel(eng.ref_id)); }
+          catch (e) { setNbExigences(0); }
+          try {
+            const alertes = getAlertesActivesByEngagement(engagementId);
+            setNbAlertesActives(alertes.length);
+          } catch (e) { setNbAlertesActives(0); }
+        }
       }
-    }
-  }, [engagementId]);
+    }, [engagementId, isEdition])
+  );
 
   const handleSelectReferentiel = (ref) => {
     setReferentielId(ref.id);
@@ -115,7 +140,6 @@ export default function EngagementFormScreen({ route, navigation }) {
       Alert.alert('Champ manquant', 'Date d\'engagement requise');
       return false;
     }
-    // Format date YYYY-MM-DD
     const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
     if (!dateRegex.test(dateEngagement)) {
       Alert.alert('Format invalide', 'Date d\'engagement doit être au format AAAA-MM-JJ');
@@ -154,9 +178,7 @@ export default function EngagementFormScreen({ route, navigation }) {
           organisme_certificateur: organismeCertificateur || null,
           notes: notes || null,
         });
-        // Si certificat fourni dès la création, on update derrière
         if (numeroCertificat) {
-          // récupérer dernier id inséré et update
           const last = db.getFirstSync(
             'SELECT id FROM engagements_certif ORDER BY id DESC LIMIT 1'
           );
@@ -196,7 +218,15 @@ export default function EngagementFormScreen({ route, navigation }) {
     );
   };
 
+  const handleOpenAuditBlanc = () => {
+    navigation.navigate('AuditBlanc', { engagementId });
+  };
+
   const cibleAffichee = editCibleLabel || `${editCibleType} #${editCibleId}`;
+
+  const pctConformes = score && score.total_exigences > 0
+    ? Math.round((score.nb_conformes / score.total_exigences) * 100)
+    : 0;
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
@@ -214,6 +244,71 @@ export default function EngagementFormScreen({ route, navigation }) {
           {cibleAffichee}
         </Text>
       </View>
+
+      {/* NOUVEAU Session 8 : Carte score audit blanc (mode édition + exigences existent) */}
+      {isEdition && score && nbExigences > 0 && (
+        <View style={styles.auditCard}>
+          <View style={styles.auditCardHeader}>
+            <Text style={styles.auditCardTitle}>🔍 Score audit blanc</Text>
+            <Text style={styles.auditCardPct}>{pctConformes}%</Text>
+          </View>
+
+          <View style={styles.scoreLine}>
+            <Text style={styles.scoreNumber}>{score.nb_conformes}</Text>
+            <Text style={styles.scoreSeparator}>/</Text>
+            <Text style={styles.scoreTotal}>{score.total_exigences}</Text>
+            <Text style={styles.scoreLabel}>conformes</Text>
+          </View>
+
+          <View style={styles.miniProgressBar}>
+            <View style={[styles.miniProgressFill, { width: `${pctConformes}%` }]} />
+          </View>
+
+          <View style={styles.miniStatsRow}>
+            <Text style={styles.miniStat}>
+              <Text style={[styles.miniStatNum, { color: '#7ec87e' }]}>{score.nb_conformes}</Text> conf.
+            </Text>
+            <Text style={styles.miniStat}>
+              <Text style={[styles.miniStatNum, { color: '#cc4444' }]}>{score.nb_non_conformes}</Text> non conf.
+            </Text>
+            <Text style={styles.miniStat}>
+              <Text style={[styles.miniStatNum, { color: '#8a9a8a' }]}>{score.nb_a_verifier}</Text> à vérifier
+            </Text>
+          </View>
+
+          {score.nb_nc_majeures > 0 && (
+            <View style={styles.alerteMajeure}>
+              <Text style={styles.alerteMajeureText}>
+                🚨 {score.nb_nc_majeures} NC majeure{score.nb_nc_majeures > 1 ? 's' : ''} bloquante{score.nb_nc_majeures > 1 ? 's' : ''}
+              </Text>
+            </View>
+          )}
+
+          {nbAlertesActives > 0 && (
+            <View style={styles.alerteActive}>
+              <Text style={styles.alerteActiveText}>
+                ⚠️ {nbAlertesActives} alerte{nbAlertesActives > 1 ? 's' : ''} active{nbAlertesActives > 1 ? 's' : ''}
+              </Text>
+            </View>
+          )}
+
+          <TouchableOpacity style={styles.btnAuditBlanc} onPress={handleOpenAuditBlanc}>
+            <Text style={styles.btnAuditBlancText}>🔍 Ouvrir l'audit blanc complet</Text>
+            <Text style={styles.btnAuditBlancChevron}>›</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {/* Note pas encore d'exigences */}
+      {isEdition && nbExigences === 0 && (
+        <View style={styles.noExigencesBox}>
+          <Text style={styles.noExigencesTitre}>📋 Audit blanc</Text>
+          <Text style={styles.noExigencesText}>
+            Le référentiel {referentielSelectionne?.nom_court || ''} n'a pas encore d'exigences modélisées.
+            Les exigences détaillées arrivent dans les prochaines sessions (8a-8d).
+          </Text>
+        </View>
+      )}
 
       {/* Sélection référentiel */}
       <View style={styles.field}>
@@ -275,7 +370,7 @@ export default function EngagementFormScreen({ route, navigation }) {
         />
       </View>
 
-      {/* Date de début de conversion (si applicable) */}
+      {/* Date de début de conversion */}
       {(statut === 'en_conversion' || statut === 'certifie') && (
         <View style={styles.field}>
           <Text style={styles.label}>Date de début de conversion</Text>
@@ -304,7 +399,7 @@ export default function EngagementFormScreen({ route, navigation }) {
         />
       </View>
 
-      {/* Numéro de certificat (si certifié) */}
+      {/* Numéro de certificat */}
       {statut === 'certifie' && (
         <View style={styles.field}>
           <Text style={styles.label}>Numéro de certificat</Text>
@@ -394,13 +489,8 @@ export default function EngagementFormScreen({ route, navigation }) {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#1a2e1a',
-  },
-  content: {
-    padding: 16,
-  },
+  container: { flex: 1, backgroundColor: '#1a2e1a' },
+  content: { padding: 16 },
   title: {
     fontSize: 22,
     fontWeight: 'bold',
@@ -413,7 +503,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#243d24',
     borderRadius: 10,
     padding: 12,
-    marginBottom: 20,
+    marginBottom: 16,
     borderLeftWidth: 4,
     borderLeftColor: '#7ec87e',
   },
@@ -430,10 +520,149 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 
-  // Champs
-  field: {
-    marginBottom: 18,
+  // NOUVEAU Session 8 : Carte audit blanc
+  auditCard: {
+    backgroundColor: '#243d24',
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 16,
+    borderLeftWidth: 4,
+    borderLeftColor: '#d4a04a',
   },
+  auditCardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  auditCardTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#d4a04a',
+  },
+  auditCardPct: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    color: '#7ec87e',
+  },
+  scoreLine: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    marginBottom: 8,
+  },
+  scoreNumber: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#fff',
+  },
+  scoreSeparator: {
+    fontSize: 18,
+    color: '#a8c8a8',
+    marginHorizontal: 4,
+  },
+  scoreTotal: {
+    fontSize: 18,
+    color: '#a8c8a8',
+  },
+  scoreLabel: {
+    fontSize: 12,
+    color: '#a8c8a8',
+    marginLeft: 8,
+  },
+  miniProgressBar: {
+    height: 6,
+    backgroundColor: '#1a2e1a',
+    borderRadius: 3,
+    overflow: 'hidden',
+    marginBottom: 10,
+  },
+  miniProgressFill: {
+    height: '100%',
+    backgroundColor: '#7ec87e',
+  },
+  miniStatsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+  },
+  miniStat: {
+    fontSize: 11,
+    color: '#a8c8a8',
+  },
+  miniStatNum: {
+    fontWeight: 'bold',
+    fontSize: 13,
+  },
+  alerteMajeure: {
+    backgroundColor: '#3a1a1a',
+    padding: 8,
+    borderRadius: 6,
+    marginBottom: 6,
+    borderLeftWidth: 3,
+    borderLeftColor: '#cc4444',
+  },
+  alerteMajeureText: {
+    fontSize: 12,
+    color: '#ff8888',
+    fontWeight: '600',
+  },
+  alerteActive: {
+    backgroundColor: '#2a2014',
+    padding: 8,
+    borderRadius: 6,
+    marginBottom: 8,
+    borderLeftWidth: 3,
+    borderLeftColor: '#d4a04a',
+  },
+  alerteActiveText: {
+    fontSize: 12,
+    color: '#e8be78',
+    fontWeight: '600',
+  },
+  btnAuditBlanc: {
+    backgroundColor: '#1a2e1a',
+    borderRadius: 8,
+    padding: 12,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 4,
+    borderWidth: 1,
+    borderColor: '#3a5a3a',
+  },
+  btnAuditBlancText: {
+    fontSize: 13,
+    color: '#7ec87e',
+    fontWeight: '600',
+  },
+  btnAuditBlancChevron: {
+    fontSize: 22,
+    color: '#7ec87e',
+  },
+
+  // Bloc no exigences
+  noExigencesBox: {
+    backgroundColor: '#1f2c38',
+    borderRadius: 10,
+    padding: 12,
+    marginBottom: 16,
+    borderLeftWidth: 3,
+    borderLeftColor: '#7eaac8',
+  },
+  noExigencesTitre: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#a8c8e8',
+    marginBottom: 4,
+  },
+  noExigencesText: {
+    fontSize: 12,
+    color: '#d0d8d0',
+    lineHeight: 17,
+  },
+
+  // Champs
+  field: { marginBottom: 18 },
   label: {
     fontSize: 13,
     color: '#a8c8a8',

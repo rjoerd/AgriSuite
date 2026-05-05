@@ -14,6 +14,7 @@ import { seedExportTrack } from './database/exportTrack';
 import { initParametresEntreprise } from './database/parametresEntreprise';
 import { initCertifTrack } from './database/certifTrack';
 import { seedCertifTrack } from './database/certifTrackData';
+import { seedCertifTrackExigences } from './database/certifTrackExigences';
 
 // Screens — Phase 0a / 0b : Sites, parcelles, CropEngine
 import SiteListScreen from './screens/SiteListScreen';
@@ -61,6 +62,8 @@ import HomeScreen from './screens/HomeScreen';
 import CertifTrackHomeScreen from './screens/CertifTrackHomeScreen';
 import ReferentielDetailScreen from './screens/ReferentielDetailScreen';
 import EngagementFormScreen from './screens/EngagementFormScreen';
+import AuditBlancScreen from './screens/AuditBlancScreen';
+import PreuveFormScreen from './screens/PreuveFormScreen';
 
 // Initialisation synchrone avant tout rendu
 initDB();
@@ -74,6 +77,7 @@ seedExportTrack();
 initParametresEntreprise();
 initCertifTrack();
 seedCertifTrack();
+seedCertifTrackExigences();
 
 const Stack = createNativeStackNavigator();
 
@@ -284,6 +288,16 @@ export default function App() {
   name="EngagementForm"
   component={EngagementFormScreen}
   options={{ title: 'Engagement certification' }}
+/>
+<Stack.Screen
+  name="AuditBlanc"
+  component={AuditBlancScreen}
+  options={{ title: '🔍 Audit blanc' }}
+/>
+<Stack.Screen
+  name="PreuveForm"
+  component={PreuveFormScreen}
+  options={{ title: '📎 Ajouter une preuve' }}
 />
       </Stack.Navigator>
     </NavigationContainer>

@@ -46,7 +46,7 @@ import {
 import { getCultureById } from '../database/cropEngine';
 import { getRecolteById } from '../database/maraicher';
 import { getSiteById, getParcelleById } from '../database/db';
-import { getEngagementsForCible, getStatutLabel, getStatutColor } from '../database/certifTrack';
+import { getEngagementsForCible, getStatutLabel, getStatutColor, getScoreEngagement, countExigencesByReferentiel } from '../database/certifTrack';
 
 // ============================================================
 // HELPERS
@@ -178,9 +178,21 @@ export default function LotDetailScreen({ navigation, route }) {
       setAnalyses(getAnalysesByLot(lotId) || []);
       setConditionnements(getConditionnementsByLot(lotId) || []);
 
-      // Engagements certifications
-      try { setEngagements(getEngagementsForCible('lot', lotId) || []); }
-      catch (e) { setEngagements([]); }
+// Engagements certifications + score audit pour chaque
+      try {
+        const engs = getEngagementsForCible('lot', lotId) || [];
+        const engsAvecScore = engs.map((eng) => {
+          let score = null;
+          let nbExigences = 0;
+          try { score = getScoreEngagement(eng.id); } catch (e) {}
+          try {
+            // récupérer ref_id depuis l'engagement (champ referentiel_id)
+            nbExigences = countExigencesByReferentiel(eng.referentiel_id);
+          } catch (e) {}
+          return { ...eng, _score: score, _nbExigences: nbExigences };
+        });
+        setEngagements(engsAvecScore);
+      } catch (e) { setEngagements([]); }
 
       // Quantité actuelle (via dernière étape ou somme bons)
       try { setQuantiteActuelle(getQuantiteActuelleLot(lotId)); }
@@ -545,29 +557,48 @@ export default function LotDetailScreen({ navigation, route }) {
           />
         ) : (
           <View style={styles.card}>
-            {engagements.map((eng, i) => (
-              <TouchableOpacity
-                key={eng.id}
-                style={[styles.engagementLigne, i < engagements.length - 1 && styles.engagementLigneSep]}
-                onPress={() => navigation.navigate('EngagementForm', { engagementId: eng.id })}
-              >
-                <View style={[styles.engagementBadgeStatut, { backgroundColor: getStatutColor(eng.statut) }]}>
-                  <Text style={styles.engagementBadgeTexte}>{getStatutLabel(eng.statut)}</Text>
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.engagementNom}>{eng.ref_nom_court}</Text>
-                  <Text style={styles.engagementComplet} numberOfLines={1}>
-                    {eng.ref_nom_complet}
-                  </Text>
-                  {eng.numero_certificat && (
-                    <Text style={styles.engagementCertif}>
-                      📄 {eng.numero_certificat}
+            {engagements.map((eng, i) => {
+              const aScore = eng._score && eng._nbExigences > 0;
+              const pct = aScore && eng._score.total_exigences > 0
+                ? Math.round((eng._score.nb_conformes / eng._score.total_exigences) * 100)
+                : 0;
+              const aNcMajeures = aScore && eng._score.nb_nc_majeures > 0;
+              return (
+                <TouchableOpacity
+                  key={eng.id}
+                  style={[styles.engagementLigne, i < engagements.length - 1 && styles.engagementLigneSep]}
+                  onPress={() => navigation.navigate('EngagementForm', { engagementId: eng.id })}
+                >
+                  <View style={[styles.engagementBadgeStatut, { backgroundColor: getStatutColor(eng.statut) }]}>
+                    <Text style={styles.engagementBadgeTexte}>{getStatutLabel(eng.statut)}</Text>
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.engagementNom}>{eng.ref_nom_court}</Text>
+                    <Text style={styles.engagementComplet} numberOfLines={1}>
+                      {eng.ref_nom_complet}
                     </Text>
-                  )}
-                </View>
-                <Text style={styles.engagementChevron}>›</Text>
-              </TouchableOpacity>
-            ))}
+                    {eng.numero_certificat && (
+                      <Text style={styles.engagementCertif}>
+                        📄 {eng.numero_certificat}
+                      </Text>
+                    )}
+                    {aScore && (
+                      <View style={styles.engagementScoreRow}>
+                        <Text style={styles.engagementScoreText}>
+                          🔍 {eng._score.nb_conformes}/{eng._score.total_exigences} conformes ({pct}%)
+                        </Text>
+                        {aNcMajeures && (
+                          <Text style={styles.engagementScoreNcMajeure}>
+                            🚨 {eng._score.nb_nc_majeures} NC maj.
+                          </Text>
+                        )}
+                      </View>
+                    )}
+                  </View>
+                  <Text style={styles.engagementChevron}>›</Text>
+                </TouchableOpacity>
+              );
+            })}
           </View>
         )}
         {/* SECTION — Étapes post-récolte */}
@@ -1558,11 +1589,28 @@ const styles = StyleSheet.create({
     fontSize: 11,
     marginTop: 1,
   },
-  engagementCertif: {
+engagementCertif: {
     color: COLORS.vertClair,
     fontSize: 11,
     marginTop: 2,
     fontFamily: 'monospace',
+  },
+  engagementScoreRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 4,
+    flexWrap: 'wrap',
+  },
+  engagementScoreText: {
+    color: '#d4a04a',
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  engagementScoreNcMajeure: {
+    color: '#ff8888',
+    fontSize: 10,
+    fontWeight: '700',
   },
   engagementChevron: {
     color: COLORS.vert,
