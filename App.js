@@ -15,6 +15,11 @@ import { initParametresEntreprise } from './database/parametresEntreprise';
 import { initCertifTrack } from './database/certifTrack';
 import { seedCertifTrack } from './database/certifTrackData';
 import { seedCertifTrackExigences } from './database/certifTrackExigences';
+import { seedCertifTrackBioUe } from './database/certifTrackBioUe';
+import { seedCertifTrackHaccp } from './database/certifTrackHaccp';
+import { seedCertifTrackFairtrade } from './database/certifTrackFairtrade';
+import { seedCertifTrackRainforest } from './database/certifTrackRainforest';
+import { initSCI } from './database/sci';
 
 // Screens — Phase 0a / 0b : Sites, parcelles, CropEngine
 import SiteListScreen from './screens/SiteListScreen';
@@ -64,6 +69,9 @@ import ReferentielDetailScreen from './screens/ReferentielDetailScreen';
 import EngagementFormScreen from './screens/EngagementFormScreen';
 import AuditBlancScreen from './screens/AuditBlancScreen';
 import PreuveFormScreen from './screens/PreuveFormScreen';
+import ProducteurSCIDetailScreen from './screens/ProducteurSCIDetailScreen';
+import ContratFormScreen from './screens/ContratFormScreen';
+import ParcelleProducteurFormScreen from './screens/ParcelleProducteurFormScreen';
 
 // Initialisation synchrone avant tout rendu
 initDB();
@@ -78,6 +86,11 @@ initParametresEntreprise();
 initCertifTrack();
 seedCertifTrack();
 seedCertifTrackExigences();
+seedCertifTrackBioUe();
+seedCertifTrackHaccp();
+seedCertifTrackFairtrade();
+seedCertifTrackRainforest();
+initSCI();
 
 const Stack = createNativeStackNavigator();
 
@@ -299,6 +312,9 @@ export default function App() {
   component={PreuveFormScreen}
   options={{ title: '📎 Ajouter une preuve' }}
 />
+<Stack.Screen name="ProducteurSCIDetail" component={ProducteurSCIDetailScreen} options={{ title: 'Producteur SCI' }} />
+<Stack.Screen name="ContratForm" component={ContratFormScreen} options={{ title: 'Contrat' }} />
+<Stack.Screen name="ParcelleProducteurForm" component={ParcelleProducteurFormScreen} options={{ title: 'Parcelle' }} />
       </Stack.Navigator>
     </NavigationContainer>
   );
