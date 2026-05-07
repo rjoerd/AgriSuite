@@ -20,6 +20,7 @@ import { seedCertifTrackHaccp } from './database/certifTrackHaccp';
 import { seedCertifTrackFairtrade } from './database/certifTrackFairtrade';
 import { seedCertifTrackRainforest } from './database/certifTrackRainforest';
 import { initSCI } from './database/sci';
+import { initSciInspectionsTables } from './database/sciInspections';
 
 // Screens — Phase 0a / 0b : Sites, parcelles, CropEngine
 import SiteListScreen from './screens/SiteListScreen';
@@ -72,6 +73,12 @@ import PreuveFormScreen from './screens/PreuveFormScreen';
 import ProducteurSCIDetailScreen from './screens/ProducteurSCIDetailScreen';
 import ContratFormScreen from './screens/ContratFormScreen';
 import ParcelleProducteurFormScreen from './screens/ParcelleProducteurFormScreen';
+import PlanificationInspectionsScreen from './screens/PlanificationInspectionsScreen';
+import InspectionFormPlanifScreen from './screens/InspectionFormPlanifScreen';
+import InspectionTerrainScreen from './screens/InspectionTerrainScreen';
+import InspectionSignaturesScreen from './screens/InspectionSignaturesScreen';
+import InspectionDetailScreen from './screens/InspectionDetailScreen';
+import SanctionFormScreen from './screens/SanctionFormScreen';
 
 // Initialisation synchrone avant tout rendu
 initDB();
@@ -91,6 +98,8 @@ seedCertifTrackHaccp();
 seedCertifTrackFairtrade();
 seedCertifTrackRainforest();
 initSCI();
+initSciInspectionsTables();
+
 
 const Stack = createNativeStackNavigator();
 
@@ -315,6 +324,36 @@ export default function App() {
 <Stack.Screen name="ProducteurSCIDetail" component={ProducteurSCIDetailScreen} options={{ title: 'Producteur SCI' }} />
 <Stack.Screen name="ContratForm" component={ContratFormScreen} options={{ title: 'Contrat' }} />
 <Stack.Screen name="ParcelleProducteurForm" component={ParcelleProducteurFormScreen} options={{ title: 'Parcelle' }} />
+<Stack.Screen 
+  name="PlanificationInspections" 
+  component={PlanificationInspectionsScreen}
+  options={{ title: 'Inspections SCI', headerStyle: { backgroundColor: '#1a2e1a' }, headerTintColor: '#7ec87e' }}
+/>
+<Stack.Screen 
+  name="InspectionFormPlanif" 
+  component={InspectionFormPlanifScreen}
+  options={{ title: 'Planification', headerStyle: { backgroundColor: '#1a2e1a' }, headerTintColor: '#7ec87e' }}
+/>
+<Stack.Screen 
+  name="InspectionTerrain" 
+  component={InspectionTerrainScreen}
+  options={{ headerShown: false }}
+/>
+<Stack.Screen 
+  name="InspectionSignatures" 
+  component={InspectionSignaturesScreen}
+  options={{ title: 'Signatures', headerStyle: { backgroundColor: '#1a2e1a' }, headerTintColor: '#7ec87e' }}
+/>
+<Stack.Screen 
+  name="InspectionDetail" 
+  component={InspectionDetailScreen}
+  options={{ title: 'Détail inspection', headerStyle: { backgroundColor: '#1a2e1a' }, headerTintColor: '#7ec87e' }}
+/>
+<Stack.Screen 
+  name="SanctionForm" 
+  component={SanctionFormScreen}
+  options={{ title: 'Sanction SCI', headerStyle: { backgroundColor: '#1a2e1a' }, headerTintColor: '#7ec87e' }}
+/>
       </Stack.Navigator>
     </NavigationContainer>
   );

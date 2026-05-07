@@ -161,7 +161,18 @@ setKpi(getKpiCertifTrack());
           </Text>
         </View>
       )}
-
+{/* Bouton accès SCI Inspections */}
+<TouchableOpacity
+  style={styles.btnSciAccess}
+  onPress={() => navigation.navigate('PlanificationInspections')}
+>
+  <Text style={styles.btnSciAccessIcon}>🛡</Text>
+  <View style={styles.btnSciAccessTextWrap}>
+    <Text style={styles.btnSciAccessTitle}>Inspections SCI</Text>
+    <Text style={styles.btnSciAccessSub}>Planification, terrain, sanctions producteurs</Text>
+  </View>
+  <Text style={styles.btnSciAccessChevron}>›</Text>
+</TouchableOpacity>
       {/* Catalogue référentiels par type */}
       <Text style={styles.sectionTitle}>📚 Catalogue référentiels</Text>
 
@@ -201,6 +212,7 @@ setKpi(getKpiCertifTrack());
               </View>
             </TouchableOpacity>
           ))}
+          
         </View>
       ))}
 
@@ -543,4 +555,37 @@ const styles = StyleSheet.create({
     lineHeight: 16,
     fontStyle: 'italic',
   },
+  btnSciAccess: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  backgroundColor: '#243d24',
+  borderRadius: 10,
+  padding: 14,
+  marginTop: 12,
+  marginBottom: 8,
+  borderLeftWidth: 4,
+  borderLeftColor: '#d4a04a',
+},
+btnSciAccessIcon: {
+  fontSize: 26,
+  marginRight: 12,
+},
+btnSciAccessTextWrap: {
+  flex: 1,
+},
+btnSciAccessTitle: {
+  fontSize: 15,
+  fontWeight: '700',
+  color: '#fff',
+},
+btnSciAccessSub: {
+  fontSize: 11,
+  color: '#a8c8a8',
+  marginTop: 2,
+},
+btnSciAccessChevron: {
+  fontSize: 26,
+  color: '#d4a04a',
+  fontWeight: '300',
+},
 });
