@@ -59,7 +59,7 @@ const getEngagementInfos = (engagementId) => {
 };
 
 export default function AuditBlancScreen({ route, navigation }) {
-  const { engagementId } = route.params;
+  const { engagementId, filtreNiveau = null, titreContexte = null } = route.params;
 
   const [engagement, setEngagement] = useState(null);
   const [exigences, setExigences] = useState([]);
@@ -79,7 +79,7 @@ export default function AuditBlancScreen({ route, navigation }) {
       const eng = getEngagementInfos(engagementId);
       setEngagement(eng);
 
-      const exigencesData = getStatutsByEngagement(engagementId);
+      const exigencesData = getStatutsByEngagement(engagementId, filtreNiveau);
 
       // Pour chaque exigence, charger le nombre de preuves
       const exigencesAvecPreuves = exigencesData.map((ex) => ({
@@ -191,7 +191,11 @@ export default function AuditBlancScreen({ route, navigation }) {
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       {/* En-tête */}
       <View style={styles.headerCard}>
-        <Text style={styles.headerTitle}>🔍 Audit blanc</Text>
+        {titreContexte && (
+  <Text style={{ fontSize: 12, color: '#d4a04a', fontWeight: '600', marginTop: 2 }}>
+    {titreContexte}
+  </Text>
+)}
         <Text style={styles.headerRef}>{engagement.ref_nom_court}</Text>
         <Text style={styles.headerCible}>
           {engagement.cible_type === 'lot' && '📦 '}

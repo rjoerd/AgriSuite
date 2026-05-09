@@ -77,6 +77,8 @@ setKpi(getKpiCertifTrack());
     return acc;
   }, {});
 
+
+
   return (
     <ScrollView
       style={styles.container}
@@ -265,9 +267,28 @@ setKpi(getKpiCertifTrack());
           Interne (SCI) pour la filière collecte arrive en v3.
         </Text>
       </View>
-
+<TouchableOpacity
+  style={{
+    backgroundColor: '#243d24',
+    borderRadius: 10,
+    padding: 14,
+    marginBottom: 16,
+    borderLeftWidth: 4,
+    borderLeftColor: '#7ec87e',
+  }}
+  onPress={() => navigation.navigate('OperateurForm')}
+>
+  <Text style={{ color: '#7ec87e', fontSize: 15, fontWeight: 'bold' }}>
+    🏢 Opérateur (test 9d1)
+  </Text>
+  <Text style={{ color: '#a8c8a8', fontSize: 12, marginTop: 4 }}>
+    Saisir/modifier les infos de l'exportateur
+  </Text>
+</TouchableOpacity>
       <View style={{ height: 40 }} />
     </ScrollView>
+
+    
   );
 }
 

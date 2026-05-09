@@ -340,21 +340,31 @@ export const countExigencesByReferentiel = (referentielId) => {
 // ============================================================
 
 // Récupère TOUTES les exigences d'un engagement avec leur statut éventuel
-export const getStatutsByEngagement = (engagementId) => {
+export const getStatutsByEngagement = (engagementId, niveau = null) => {
+  let whereNiveau = '';
+  let params = [engagementId, engagementId];
+
+  if (niveau) {
+    // Inclut le niveau demandé + 'multi' (applicable partout)
+    whereNiveau = ` AND (ex.niveau_application = ? OR ex.niveau_application = 'multi')`;
+    params.push(niveau);
+  }
+
   return db.getAllSync(
     `SELECT 
        ex.id as exigence_id,
        ex.code_exigence, ex.categorie, ex.titre, ex.description,
        ex.criticite, ex.preuve_attendue, ex.reference_officielle,
        ex.auto_verifiable, ex.regle_auto_code, ex.ordre,
+       ex.niveau_application,
        s.id as statut_id, s.statut, s.verifie_par, s.date_verification,
        s.commentaire, s.auto_genere
      FROM exigences_referentiel ex
      INNER JOIN engagements_certif e ON e.id = ?
      LEFT JOIN statuts_exigences s ON s.exigence_id = ex.id AND s.engagement_id = ?
-     WHERE ex.referentiel_id = e.referentiel_id
+     WHERE ex.referentiel_id = e.referentiel_id${whereNiveau}
      ORDER BY ex.categorie, ex.ordre, ex.code_exigence`,
-    [engagementId, engagementId]
+    params
   );
 };
 

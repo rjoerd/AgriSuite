@@ -21,6 +21,8 @@ import { seedCertifTrackFairtrade } from './database/certifTrackFairtrade';
 import { seedCertifTrackRainforest } from './database/certifTrackRainforest';
 import { initSCI } from './database/sci';
 import { initSciInspectionsTables } from './database/sciInspections';
+import { initOperateur, migrateOperateurSchema, seedOperateur } from './database/operateur';
+import { reclasserExigencesParNiveau } from './database/certifTrackNiveaux';
 
 // Screens — Phase 0a / 0b : Sites, parcelles, CropEngine
 import SiteListScreen from './screens/SiteListScreen';
@@ -83,6 +85,7 @@ import ParcelleConversionScreen from './screens/ParcelleConversionScreen';
 import ProducteurParcelleFormScreen from './screens/ProducteurParcelleFormScreen';
 import ProducteurParcellesScreen from './screens/ProducteurParcellesScreen';
 import VerifLotScreen from './screens/VerifLotScreen';
+import OperateurFormScreen from './screens/OperateurFormScreen';
 
 // Initialisation synchrone avant tout rendu
 initDB();
@@ -103,6 +106,10 @@ seedCertifTrackFairtrade();
 seedCertifTrackRainforest();
 initSCI();
 initSciInspectionsTables();
+initOperateur();
+migrateOperateurSchema();
+seedOperateur();
+reclasserExigencesParNiveau();
 
 
 const Stack = createNativeStackNavigator();
@@ -378,6 +385,7 @@ export default function App() {
   component={VerifLotScreen}
   options={{ title: 'Vérification lot', headerStyle: { backgroundColor: '#1a2e1a' }, headerTintColor: '#fff' }}
 />
+<Stack.Screen name="OperateurForm" component={OperateurFormScreen} options={{ title: '🏢 Opérateur' }} />
       </Stack.Navigator>
     </NavigationContainer>
   );
