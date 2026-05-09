@@ -149,10 +149,12 @@ export default function BonCollecteFormScreen({ navigation, route }) {
     }, [charger])
   );
 
-  // Si on revient avec un lotIdNouveau (création à la volée), on le sélectionne
+// Si on revient avec un lotIdNouveau (création à la volée), on le sélectionne
   useEffect(() => {
     if (route?.params?.lotIdNouveau) {
       setLotId(route.params.lotIdNouveau);
+      // On nettoie le param pour éviter qu'il se ré-applique au focus suivant
+      navigation.setParams({ lotIdNouveau: undefined });
     }
   }, [route?.params?.lotIdNouveau]);
 
@@ -261,6 +263,11 @@ export default function BonCollecteFormScreen({ navigation, route }) {
   // ============================================================
 
   const sauvegarder = useCallback(() => {
+    // Garde anti-double-clic : si déjà en cours, on ignore
+    if (enCours) {
+      console.log('[BonCollecteForm] Double-clic ignoré');
+      return;
+    }
     if (!valider()) {
       Alert.alert(
         'Champs manquants',
@@ -597,6 +604,7 @@ export default function BonCollecteFormScreen({ navigation, route }) {
             style={[styles.btnPrincipal, enCours && styles.btnDisabled]}
             onPress={sauvegarder}
             disabled={enCours}
+            activeOpacity={0.6}
           >
             <Text style={styles.btnPrincipalTexte}>
               {enCours ? 'Enregistrement…' : '+ Enregistrer le bon'}

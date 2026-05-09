@@ -78,6 +78,13 @@ export const initSCI = () => {
     }
   });
 
+  // ============================================================
+// SESSION 9c1 — Migration conversion BIO (alignée schéma existant)
+// À coller dans database/sci.js dans initSCITables()
+// NB : la colonne statut_conversion_bio existe déjà — ne pas la recréer
+// ============================================================
+
+
   // Table contrats_producteur
   db.execSync(`
     CREATE TABLE IF NOT EXISTS contrats_producteur (
@@ -138,6 +145,32 @@ export const initSCI = () => {
     );
   `);
 
+  const colonnesConversion = [
+  // Type culture pour calcul délai (24 ou 36 mois)
+  { nom: 'type_culture_aac', sql: "ALTER TABLE parcelles_producteur ADD COLUMN type_culture_aac TEXT DEFAULT 'annuelle'" },
+  // Date démarrage conversion
+  { nom: 'date_debut_conversion', sql: "ALTER TABLE parcelles_producteur ADD COLUMN date_debut_conversion TEXT" },
+  // Garde-fou antécédents intrants (BIO UE 2018/848 art. 10)
+  { nom: 'date_dernier_intrant_interdit', sql: "ALTER TABLE parcelles_producteur ADD COLUMN date_dernier_intrant_interdit TEXT" },
+  // Certification finale
+  { nom: 'date_certification_bio', sql: "ALTER TABLE parcelles_producteur ADD COLUMN date_certification_bio TEXT" },
+  { nom: 'organisme_certificateur', sql: "ALTER TABLE parcelles_producteur ADD COLUMN organisme_certificateur TEXT" },
+  { nom: 'numero_certificat_bio', sql: "ALTER TABLE parcelles_producteur ADD COLUMN numero_certificat_bio TEXT" },
+  { nom: 'notes_conversion', sql: "ALTER TABLE parcelles_producteur ADD COLUMN notes_conversion TEXT" },
+];
+
+colonnesConversion.forEach(({ nom, sql }) => {
+  try {
+    db.execSync(sql);
+    console.log(`✅ [SCI 9c1] Colonne ${nom} ajoutée`);
+  } catch (e) {
+    if (!e.message.includes('duplicate')) {
+      console.log(`⚠️ [SCI 9c1] ${nom}: ${e.message}`);
+    }
+  }
+});
+
+console.log('✅ [SCI 9c1] Migration conversion BIO terminée');
   // Index
   db.execSync(`CREATE INDEX IF NOT EXISTS idx_contrats_fournisseur ON contrats_producteur(fournisseur_id);`);
   db.execSync(`CREATE INDEX IF NOT EXISTS idx_contrats_type ON contrats_producteur(type_contrat, actif);`);

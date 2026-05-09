@@ -584,7 +584,26 @@ export default function FournisseurFormScreen({ navigation, route }) {
             </Text>
           </TouchableOpacity>
         </View>
-
+{/* Bouton parcelles (édition uniquement) */}
+        {isEdition && (
+          <TouchableOpacity
+            style={{
+              marginTop: 16,
+              backgroundColor: '#1a2e1a',
+              borderWidth: 1,
+              borderColor: '#7ec87e',
+              paddingVertical: 14,
+              borderRadius: 10,
+              alignItems: 'center',
+            }}
+            onPress={() => navigation.navigate('ProducteurParcelles', { fournisseurId })}
+            disabled={enCours}
+          >
+            <Text style={{ color: '#7ec87e', fontSize: 14, fontWeight: '600' }}>
+              🌾 Voir les parcelles & conversion BIO
+            </Text>
+          </TouchableOpacity>
+        )}
         {/* Bouton supprimer (édition uniquement) */}
         {isEdition && (
           <TouchableOpacity

@@ -256,36 +256,53 @@ export default function ProducteurSCIDetailScreen({ route, navigation }) {
         </View>
       ) : (
         parcelles.map((p) => (
-          <TouchableOpacity
-            key={p.id}
-            style={styles.parcelleCard}
-            onLongPress={() => handleSupprimerParcelle(p.id, p.nom_parcelle)}
-            onPress={() => navigation.navigate('ParcelleProducteurForm', { parcelleId: p.id, fournisseurId })}
-          >
-            <View style={{ flex: 1 }}>
-              <Text style={styles.parcelleNom}>{p.nom_parcelle}</Text>
-              <Text style={styles.parcelleInfo}>
-                {p.culture_principale || '—'} · {p.superficie_ha?.toFixed(2) || '?'} ha
-              </Text>
-              {p.latitude && p.longitude && (
-                <Text style={styles.parcelleGps}>
-                  📍 {p.latitude.toFixed(5)}, {p.longitude.toFixed(5)}
-                </Text>
-              )}
-              {p.zone_collecte_code && (
-                <Text style={styles.parcelleZone}>Zone {p.zone_collecte_code}</Text>
-              )}
-            </View>
-            {p.statut_conversion_bio && p.statut_conversion_bio !== 'non_engage' && (
-              <View style={[styles.bioPastille, { backgroundColor: getStatutConversionColor(p.statut_conversion_bio) }]}>
-                <Text style={styles.bioPastilleText}>
-                  {p.statut_conversion_bio}
-                </Text>
-              </View>
-            )}
-            <Text style={styles.chevron}>›</Text>
-          </TouchableOpacity>
-        ))
+  <View key={p.id} style={{ marginBottom: 12 }}>
+    <TouchableOpacity
+      style={styles.parcelleCard}
+      onLongPress={() => handleSupprimerParcelle(p.id, p.nom_parcelle)}
+      onPress={() => navigation.navigate('ParcelleProducteurForm', { parcelleId: p.id, fournisseurId })}
+    >
+      <View style={{ flex: 1 }}>
+        <Text style={styles.parcelleNom}>{p.nom_parcelle}</Text>
+        <Text style={styles.parcelleInfo}>
+          {p.culture_principale || '—'} · {p.superficie_ha?.toFixed(2) || '?'} ha
+        </Text>
+        {p.latitude && p.longitude && (
+          <Text style={styles.parcelleGps}>
+            📍 {p.latitude.toFixed(5)}, {p.longitude.toFixed(5)}
+          </Text>
+        )}
+        {p.zone_collecte_code && (
+          <Text style={styles.parcelleZone}>Zone {p.zone_collecte_code}</Text>
+        )}
+      </View>
+      {p.statut_conversion_bio && p.statut_conversion_bio !== 'non_engage' && (
+        <View style={[styles.bioPastille, { backgroundColor: getStatutConversionColor(p.statut_conversion_bio) }]}>
+          <Text style={styles.bioPastilleText}>
+            {p.statut_conversion_bio}
+          </Text>
+        </View>
+      )}
+      <Text style={styles.chevron}>›</Text>
+    </TouchableOpacity>
+
+    <TouchableOpacity
+      style={{
+        backgroundColor: '#2d7a2d',
+        paddingVertical: 8,
+        paddingHorizontal: 12,
+        borderRadius: 6,
+        marginTop: 6,
+        alignSelf: 'flex-start',
+      }}
+      onPress={() => navigation.navigate('ParcelleConversion', { parcelleId: p.id })}
+    >
+      <Text style={{ color: '#fff', fontSize: 12 }}>
+        🌱 Conversion BIO {p.statut_conversion_actuel ? `· ${p.statut_conversion_actuel}` : ''}
+      </Text>
+    </TouchableOpacity>
+  </View>
+))
       )}
 
       {/* Section contrats */}

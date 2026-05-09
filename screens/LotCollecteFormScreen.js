@@ -268,12 +268,18 @@ export default function LotCollecteFormScreen({ navigation, route }) {
       setEnCours(false);
 
       if (modeRapide) {
-        // Création à la volée : retour direct avec le lot créé
-        navigation.navigate({
-          name: 'BonCollecteForm',
-          params: { lotIdNouveau: nouveauId },
-          merge: true,
-        });
+        // Création à la volée : on revient à l'écran précédent (BonCollecteForm)
+        // en lui passant le lotIdNouveau via les params de la route précédente.
+        const state = navigation.getState();
+        const previousRoute = state.routes[state.index - 1];
+        if (previousRoute?.name === 'BonCollecteForm') {
+          navigation.dispatch({
+            type: 'SET_PARAMS',
+            payload: { params: { lotIdNouveau: nouveauId } },
+            source: previousRoute.key,
+          });
+        }
+        navigation.goBack();
         return;
       }
 

@@ -79,6 +79,9 @@ import InspectionTerrainScreen from './screens/InspectionTerrainScreen';
 import InspectionSignaturesScreen from './screens/InspectionSignaturesScreen';
 import InspectionDetailScreen from './screens/InspectionDetailScreen';
 import SanctionFormScreen from './screens/SanctionFormScreen';
+import ParcelleConversionScreen from './screens/ParcelleConversionScreen';
+import ProducteurParcelleFormScreen from './screens/ProducteurParcelleFormScreen';
+import ProducteurParcellesScreen from './screens/ProducteurParcellesScreen';
 
 // Initialisation synchrone avant tout rendu
 initDB();
@@ -353,6 +356,21 @@ export default function App() {
   name="SanctionForm" 
   component={SanctionFormScreen}
   options={{ title: 'Sanction SCI', headerStyle: { backgroundColor: '#1a2e1a' }, headerTintColor: '#7ec87e' }}
+/>
+<Stack.Screen
+  name="ParcelleConversion"
+  component={ParcelleConversionScreen}
+  options={{ title: 'Conversion BIO', headerStyle: { backgroundColor: '#1a2e1a' }, headerTintColor: '#fff' }}
+/>
+<Stack.Screen
+  name="ProducteurParcelleForm"
+  component={ProducteurParcelleFormScreen}
+  options={{ title: 'Parcelle producteur', headerStyle: { backgroundColor: '#1a2e1a' }, headerTintColor: '#fff' }}
+/>
+<Stack.Screen
+  name="ProducteurParcelles"
+  component={ProducteurParcellesScreen}
+  options={{ title: 'Parcelles producteur', headerStyle: { backgroundColor: '#1a2e1a' }, headerTintColor: '#fff' }}
 />
       </Stack.Navigator>
     </NavigationContainer>

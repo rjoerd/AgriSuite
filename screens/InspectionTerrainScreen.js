@@ -14,6 +14,7 @@ import {
   Modal,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   getExigencesPourInspection,
   creerInspectionRealisee,
@@ -52,6 +53,7 @@ const GRAVITES = [
 ];
 
 export default function InspectionTerrainScreen({ route, navigation }) {
+  const insets = useSafeAreaInsets();
   // Routes possibles : { planificationId } OU { inspectionRealiseeId }
   const planificationId = route.params?.planificationId || null;
   const inspectionRealiseeIdParam = route.params?.inspectionRealiseeId || null;
@@ -300,7 +302,7 @@ export default function InspectionTerrainScreen({ route, navigation }) {
   return (
     <View style={styles.container}>
       {/* Barre progression haute */}
-      <View style={styles.topBar}>
+      <View style={[styles.topBar, { paddingTop: Math.max(insets.top + 8, 16) }]}>
         <TouchableOpacity onPress={sortir}>
           <Text style={styles.topBarBack}>‹ Pause</Text>
         </TouchableOpacity>
@@ -437,7 +439,7 @@ export default function InspectionTerrainScreen({ route, navigation }) {
       </ScrollView>
 
       {/* Boutons navigation bas */}
-      <View style={styles.bottomBar}>
+      <View style={[styles.bottomBar, { paddingBottom: Math.max(insets.bottom + 20, 32) }]}>
         <TouchableOpacity
           style={[styles.btnNav, currentIdx === 0 && styles.btnNavDisabled]}
           onPress={precedente}
