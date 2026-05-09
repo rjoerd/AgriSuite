@@ -1416,3 +1416,572 @@ export function calculerAxe1Tracabilite(lotId) {
   }
   return { statut, details };
 }
+
+// ============================================
+// AXE 2 — Qualité physico-chimique
+// ============================================
+
+export function calculerAxe2Qualite(lotId) {
+  const lot = db.getFirstSync(`SELECT * FROM lots WHERE id = ?`, [lotId]);
+  if (!lot) return { statut: 'non_conforme', details: { erreur: 'Lot introuvable' } };
+
+  const analyses = db.getAllSync(
+    `SELECT * FROM analyses_qualite
+     WHERE lot_id = ? AND est_rectifie_par IS NULL
+     ORDER BY date_analyse DESC`,
+    [lotId]
+  );
+
+  const details = {
+    nb_analyses: analyses.length,
+    types_couverts: [],
+    analyses: [],
+    problemes: [],
+  };
+
+  if (analyses.length === 0) {
+    details.problemes.push('Aucune analyse qualité enregistrée pour ce lot');
+    return { statut: 'non_conforme', details };
+  }
+
+  // Types d'analyses critiques attendues selon culture (catalogue minimal)
+  const TYPES_CRITIQUES_PAR_CULTURE = {
+    GIN: ['humidite'],
+    VAN: ['humidite', 'vanilline'],
+    GIR: ['humidite', 'aflatoxines'],
+    CAN: ['humidite', 'coumarine'],
+    CAF: ['humidite', 'ochratoxine_a'],
+    CAC: ['humidite', 'cadmium', 'fermentation'],
+    POI: ['humidite', 'salmonella'],
+  };
+
+  // Extraire le code culture du code_lot (segment 4 : MDG-AAAA-XXX-CCC-NNN)
+  const segments = lot.code_lot?.split('-') || [];
+  const codeCulture = segments[3];
+  const typesCritiques = TYPES_CRITIQUES_PAR_CULTURE[codeCulture] || [];
+
+  let nbConformes = 0;
+  let nbNonConformes = 0;
+
+  for (const a of analyses) {
+    const conforme = a.conforme === 1;
+    if (conforme) nbConformes++;
+    else if (a.conforme === 0) nbNonConformes++;
+
+    details.analyses.push({
+      type: a.type_analyse,
+      date: a.date_analyse,
+      valeur: a.valeur,
+      unite: a.unite,
+      seuil_min: a.seuil_min,
+      seuil_max: a.seuil_max,
+      conforme: a.conforme,
+      laboratoire: a.laboratoire,
+    });
+
+    if (!details.types_couverts.includes(a.type_analyse)) {
+      details.types_couverts.push(a.type_analyse);
+    }
+
+    if (a.conforme === 0) {
+      details.problemes.push(
+        `${a.type_analyse} non conforme (${a.valeur} ${a.unite || ''})`
+      );
+    }
+  }
+
+  // Vérifie que les types critiques sont couverts
+  const manquants = typesCritiques.filter(t => !details.types_couverts.includes(t));
+  if (manquants.length > 0) {
+    details.problemes.push(
+      `Analyses critiques manquantes pour ${codeCulture} : ${manquants.join(', ')}`
+    );
+  }
+
+  details.nb_conformes = nbConformes;
+  details.nb_non_conformes = nbNonConformes;
+
+  let statut = 'conforme';
+  if (nbNonConformes > 0) statut = 'non_conforme';
+  else if (manquants.length > 0) statut = 'alerte';
+
+  return { statut, details };
+}
+
+// ============================================
+// AXE 3 — Mass balance
+// ============================================
+
+export function calculerAxe3MassBalance(lotId) {
+  const lot = db.getFirstSync(`SELECT * FROM lots WHERE id = ?`, [lotId]);
+  if (!lot) return { statut: 'non_conforme', details: { erreur: 'Lot introuvable' } };
+
+  // ─── ENTRÉES ───
+  let entreeKg = 0;
+  let sourceEntree = '';
+
+  if (lot.filiere === 'collecte') {
+    const r = db.getFirstSync(
+      `SELECT SUM(quantite_kg) AS total
+       FROM bons_collecte
+       WHERE lot_id = ? AND est_rectifie_par IS NULL`,
+      [lotId]
+    );
+    entreeKg = r?.total || 0;
+    sourceEntree = `${entreeKg.toFixed(1)} kg via bons de collecte`;
+  } else {
+    entreeKg = lot.quantite_brute_kg || 0;
+    sourceEntree = `${entreeKg.toFixed(1)} kg brut récolté`;
+  }
+
+  // ─── SORTIES (conditionnements) ───
+  const conds = db.getAllSync(
+    `SELECT * FROM conditionnements
+     WHERE lot_id = ? AND est_rectifie_par IS NULL`,
+    [lotId]
+  );
+  const sortieKg = conds.reduce((s, c) => s + (c.poids_total_kg || 0), 0);
+
+  // ─── PERTES DOCUMENTÉES (étapes post-récolte) ───
+  const etapes = db.getAllSync(
+    `SELECT * FROM etapes_post_recolte
+     WHERE lot_id = ? AND est_rectifie_par IS NULL
+     ORDER BY ordre ASC`,
+    [lotId]
+  );
+  const pertes = etapes.reduce((s, e) => s + (e.perte_kg || 0), 0);
+
+  // ─── BILAN ───
+  const ecart = entreeKg - sortieKg - pertes;
+  const ecartPct = entreeKg > 0 ? (ecart / entreeKg) * 100 : 0;
+
+  const details = {
+    entree_kg: entreeKg,
+    source_entree: sourceEntree,
+    sortie_kg: sortieKg,
+    nb_conditionnements: conds.length,
+    pertes_documentees_kg: pertes,
+    nb_etapes: etapes.length,
+    ecart_kg: ecart,
+    ecart_pct: ecartPct,
+    detail_etapes: etapes.map(e => ({
+      type: e.type_etape,
+      ordre: e.ordre,
+      entree: e.quantite_entree_kg,
+      sortie: e.quantite_sortie_kg,
+      perte: e.perte_kg,
+      taux_perte_pct: e.taux_perte_pct,
+    })),
+    problemes: [],
+  };
+
+  // ─── ÉVALUATION ───
+  if (entreeKg === 0) {
+    details.problemes.push('Aucune quantité d\'entrée enregistrée (lot vide ?)');
+    return { statut: 'non_conforme', details };
+  }
+
+  if (sortieKg === 0 && conds.length === 0) {
+    // Lot pas encore conditionné — on ne peut pas conclure
+    details.problemes.push('Lot non encore conditionné — bilan matière non calculable');
+    return { statut: 'na', details };
+  }
+
+  let statut = 'conforme';
+  const ecartAbs = Math.abs(ecartPct);
+
+  if (ecart < 0) {
+    // Sortie + pertes > entrée → impossible physiquement
+    details.problemes.push(
+      `Sorties (${sortieKg.toFixed(1)} kg) + pertes (${pertes.toFixed(1)} kg) > entrée (${entreeKg.toFixed(1)} kg) — incohérence`
+    );
+    statut = 'non_conforme';
+  } else if (ecartAbs > 5) {
+    details.problemes.push(
+      `Écart de ${ecart.toFixed(1)} kg (${ecartPct.toFixed(1)}%) non documenté — seuil critique 5% dépassé`
+    );
+    statut = 'non_conforme';
+  } else if (ecartAbs > 2) {
+    details.problemes.push(
+      `Écart de ${ecart.toFixed(1)} kg (${ecartPct.toFixed(1)}%) à justifier (tolérance 2-5%)`
+    );
+    statut = 'alerte';
+  }
+
+  return { statut, details };
+}
+
+// ============================================
+// AXE 5 — Cohérence référentielle
+// ============================================
+
+export function calculerAxe5Coherence(lotId) {
+  const lot = db.getFirstSync(`SELECT * FROM lots WHERE id = ?`, [lotId]);
+  if (!lot) return { statut: 'non_conforme', details: { erreur: 'Lot introuvable' } };
+
+  const details = {
+    engagements_lot: [],
+    fournisseurs_verifies: [],
+    problemes: [],
+  };
+
+  // ─── Engagements du lot ───
+  let engagementsLot = [];
+  try {
+    engagementsLot = db.getAllSync(
+      `SELECT e.*, r.nom_court, r.code AS ref_code
+       FROM engagements_certif e
+       JOIN referentiels r ON r.id = e.referentiel_id
+       WHERE e.cible_type = 'lot' AND e.cible_id = ?`,
+      [lotId]
+    );
+  } catch (err) {
+    details.problemes.push('Module CertifTrack indisponible (table engagements_certif manquante)');
+    return { statut: 'na', details };
+  }
+
+  if (engagementsLot.length === 0) {
+    details.problemes.push('Aucun référentiel engagé sur ce lot — impossible de juger la cohérence');
+    return { statut: 'na', details };
+  }
+
+  for (const eng of engagementsLot) {
+    details.engagements_lot.push({
+      referentiel: eng.nom_court,
+      ref_code: eng.ref_code,
+      statut: eng.statut,
+      date_engagement: eng.date_engagement,
+    });
+
+    // Engagement du lot lui-même actif ?
+    if (eng.statut === 'suspendu' || eng.statut === 'abandonne') {
+      details.problemes.push(
+        `Engagement ${eng.nom_court} sur le lot est ${eng.statut}`
+      );
+    }
+  }
+
+  // ─── Filière B : vérifier chaque fournisseur amont ───
+  if (lot.filiere === 'collecte') {
+    const bons = db.getAllSync(
+      `SELECT * FROM bons_collecte
+       WHERE lot_id = ? AND est_rectifie_par IS NULL`,
+      [lotId]
+    );
+
+    // Regrouper bons par fournisseur (un fournisseur = plusieurs bons possibles)
+    const fournisseursMap = new Map();
+    for (const bon of bons) {
+      if (!fournisseursMap.has(bon.fournisseur_id)) {
+        fournisseursMap.set(bon.fournisseur_id, {
+          fournisseur_id: bon.fournisseur_id,
+          dates_collecte: [],
+        });
+      }
+      fournisseursMap.get(bon.fournisseur_id).dates_collecte.push(bon.date_collecte);
+    }
+
+    for (const [fid, info] of fournisseursMap.entries()) {
+      const fournisseur = db.getFirstSync(
+        `SELECT * FROM fournisseurs WHERE id = ?`,
+        [fid]
+      );
+      const dateMin = info.dates_collecte.sort()[0];
+
+      const result = {
+        fournisseur: fournisseur?.nom || `#${fid}`,
+        date_collecte_premiere: dateMin,
+        engagements: [],
+      };
+
+      // Pour chaque référentiel engagé sur le lot, vérifier que le fournisseur l'avait aussi
+      for (const engLot of engagementsLot) {
+        let engFourn = null;
+        try {
+          engFourn = db.getFirstSync(
+            `SELECT * FROM engagements_certif
+             WHERE cible_type = 'fournisseur' AND cible_id = ? AND referentiel_id = ?
+             ORDER BY date_engagement ASC LIMIT 1`,
+            [fid, engLot.referentiel_id]
+          );
+        } catch (err) {}
+
+        if (!engFourn) {
+          details.problemes.push(
+            `${result.fournisseur} : aucun engagement ${engLot.nom_court} déclaré`
+          );
+          result.engagements.push({
+            referentiel: engLot.nom_court,
+            statut: 'absent',
+            valide_a_la_collecte: false,
+          });
+          continue;
+        }
+
+        // Engagement actif au moment de la collecte ?
+        const valideALaCollecte =
+          engFourn.date_engagement <= dateMin &&
+          engFourn.statut !== 'suspendu' &&
+          engFourn.statut !== 'abandonne';
+
+        if (!valideALaCollecte) {
+          details.problemes.push(
+            `${result.fournisseur} : ${engLot.nom_court} non valide à la date de collecte (${dateMin}) — engagement ${engFourn.statut} depuis ${engFourn.date_engagement}`
+          );
+        }
+
+        // BIO : conversion vs certifié
+        const flagsConversion = [];
+        if (engLot.ref_code?.includes('BIO') && engFourn.statut === 'en_conversion') {
+          flagsConversion.push('en_conversion (vente sous mention BIO interdite avant C3)');
+          details.problemes.push(
+            `${result.fournisseur} : ${engLot.nom_court} en conversion — vente sous mention BIO interdite`
+          );
+        }
+
+        result.engagements.push({
+          referentiel: engLot.nom_court,
+          statut: engFourn.statut,
+          date_engagement: engFourn.date_engagement,
+          valide_a_la_collecte: valideALaCollecte,
+          flags: flagsConversion,
+        });
+      }
+
+      details.fournisseurs_verifies.push(result);
+    }
+  }
+
+  // ─── Évaluation finale ───
+  let statut = 'conforme';
+  if (details.problemes.length > 0) {
+    // Problèmes graves = engagement absent ou en conversion sous mention BIO
+    const probsGraves = details.problemes.filter(p =>
+      p.includes('aucun engagement') ||
+      p.includes('en conversion') ||
+      p.includes('non valide à la date')
+    );
+    statut = probsGraves.length > 0 ? 'non_conforme' : 'alerte';
+  }
+
+  return { statut, details };
+}
+
+// ============================================
+// AXE 4 — Test de rappel (recall test)
+// ============================================
+
+export function calculerAxe4Recall(lotId) {
+  const lot = db.getFirstSync(`SELECT * FROM lots WHERE id = ?`, [lotId]);
+  if (!lot) return { statut: 'non_conforme', details: { erreur: 'Lot introuvable' } };
+
+  const details = {
+    chaine: [],
+    problemes: [],
+  };
+
+  // ─── MAILLON 1 : Conditionnement (sachet final) ───
+  const conds = db.getAllSync(
+    `SELECT * FROM conditionnements
+     WHERE lot_id = ? AND est_rectifie_par IS NULL
+     ORDER BY date_conditionnement DESC`,
+    [lotId]
+  );
+
+  const maillon1 = {
+    nom: '1. Conditionnement (sachet final)',
+    present: conds.length > 0,
+    complet: false,
+    details: '',
+  };
+
+  if (conds.length === 0) {
+    maillon1.details = 'Aucun conditionnement enregistré';
+    details.problemes.push('Maillon 1 manquant : pas de conditionnement → impossible de tracer un sachet');
+  } else {
+    const totalUnites = conds.reduce((s, c) => s + (c.nombre_unites || 0), 0);
+    const sansSerie = conds.filter(c => !c.numero_serie_debut && !c.numero_serie_fin).length;
+    maillon1.complet = sansSerie === 0;
+    maillon1.details = `${conds.length} conditionnement(s), ${totalUnites} unités`;
+    if (sansSerie > 0) {
+      details.problemes.push(`${sansSerie} conditionnement(s) sans numéro de série — recall impossible à grain fin`);
+    }
+  }
+  details.chaine.push(maillon1);
+
+  // ─── MAILLON 2 : Lot ───
+  const maillon2 = {
+    nom: '2. Lot',
+    present: true,
+    complet: !!(lot.code_lot && lot.date_debut && lot.cree_par),
+    details: `${lot.code_lot} (${lot.filiere}, créé par ${lot.cree_par || '?'})`,
+  };
+  if (!lot.code_lot) details.problemes.push('Lot sans code unique');
+  if (!lot.date_debut) details.problemes.push('Lot sans date de début');
+  details.chaine.push(maillon2);
+
+  // ─── MAILLON 3 : Étapes post-récolte ───
+  const etapes = db.getAllSync(
+    `SELECT * FROM etapes_post_recolte
+     WHERE lot_id = ? AND est_rectifie_par IS NULL
+     ORDER BY ordre ASC`,
+    [lotId]
+  );
+
+  const maillon3 = {
+    nom: '3. Étapes post-récolte',
+    present: etapes.length > 0,
+    complet: false,
+    details: '',
+  };
+
+  if (etapes.length === 0) {
+    maillon3.details = 'Aucune étape enregistrée';
+    // Pas bloquant si lot très récent, mais on flag
+    if (conds.length > 0) {
+      details.problemes.push('Maillon 3 manquant : conditionnement existe mais aucune étape post-récolte tracée');
+    }
+  } else {
+    const sansOperateur = etapes.filter(e => !e.operateur).length;
+    const sansDate = etapes.filter(e => !e.date_debut).length;
+    maillon3.complet = sansOperateur === 0 && sansDate === 0;
+    maillon3.details = etapes.map(e => `#${e.ordre} ${e.type_etape}`).join(' → ');
+    if (sansOperateur > 0) details.problemes.push(`${sansOperateur} étape(s) sans opérateur identifié`);
+    if (sansDate > 0) details.problemes.push(`${sansDate} étape(s) sans date`);
+  }
+  details.chaine.push(maillon3);
+
+  // ─── MAILLONS 4 & 5 : selon filière ───
+  if (lot.filiere === 'collecte') {
+    // MAILLON 4 : Bons de collecte
+    const bons = db.getAllSync(
+      `SELECT * FROM bons_collecte
+       WHERE lot_id = ? AND est_rectifie_par IS NULL`,
+      [lotId]
+    );
+
+    const maillon4 = {
+      nom: '4. Bons de collecte',
+      present: bons.length > 0,
+      complet: false,
+      details: '',
+    };
+
+    if (bons.length === 0) {
+      maillon4.details = 'Aucun bon de collecte';
+      details.problemes.push('Maillon 4 manquant : lot collecte sans bon → origine inconnue');
+    } else {
+      const sansDate = bons.filter(b => !b.date_collecte).length;
+      const sansGps = bons.filter(b => !b.latitude_collecte || !b.longitude_collecte).length;
+      maillon4.complet = sansDate === 0;
+      maillon4.details = `${bons.length} bon(s), total ${bons.reduce((s, b) => s + (b.quantite_kg || 0), 0).toFixed(1)} kg`;
+      if (sansDate > 0) details.problemes.push(`${sansDate} bon(s) sans date de collecte`);
+      if (sansGps > 0) details.problemes.push(`${sansGps} bon(s) sans coordonnées GPS du lieu de collecte`);
+    }
+    details.chaine.push(maillon4);
+
+    // MAILLON 5 : Fournisseurs + parcelles
+    const fournisseursIds = [...new Set(bons.map(b => b.fournisseur_id))];
+    const maillon5 = {
+      nom: '5. Fournisseurs + parcelles',
+      present: fournisseursIds.length > 0,
+      complet: false,
+      details: '',
+    };
+
+    let sousDetails = [];
+    let nbSansParcelle = 0;
+    let nbSansGpsFournisseur = 0;
+
+    for (const fid of fournisseursIds) {
+      const f = db.getFirstSync(`SELECT * FROM fournisseurs WHERE id = ?`, [fid]);
+      if (!f) continue;
+      if (!f.latitude || !f.longitude) nbSansGpsFournisseur++;
+
+      let nbParcelles = 0;
+      let nbGpsParcelles = 0;
+      try {
+        const parcelles = db.getAllSync(
+          `SELECT * FROM parcelles_producteur WHERE fournisseur_id = ?`,
+          [fid]
+        );
+        nbParcelles = parcelles.length;
+        nbGpsParcelles = parcelles.filter(p => p.latitude && p.longitude).length;
+      } catch (e) {}
+
+      if (nbParcelles === 0) nbSansParcelle++;
+      sousDetails.push(`${f.nom} (${nbParcelles} parc., ${nbGpsParcelles} GPS)`);
+    }
+
+    maillon5.complet = nbSansParcelle === 0 && nbSansGpsFournisseur === 0;
+    maillon5.details = sousDetails.join(' · ');
+    if (nbSansParcelle > 0) details.problemes.push(`${nbSansParcelle} fournisseur(s) sans aucune parcelle déclarée — recall ne remonte pas à la terre`);
+    if (nbSansGpsFournisseur > 0) details.problemes.push(`${nbSansGpsFournisseur} fournisseur(s) sans GPS`);
+    details.chaine.push(maillon5);
+
+  } else {
+    // FILIÈRE A : MAILLON 4 = Récolte source, MAILLON 5 = Parcelle propre
+    const maillon4 = {
+      nom: '4. Récolte source',
+      present: !!lot.recolte_maraichere_id,
+      complet: false,
+      details: '',
+    };
+    if (!lot.recolte_maraichere_id) {
+      maillon4.details = 'Aucune récolte rattachée';
+      details.problemes.push('Maillon 4 manquant : lot production sans récolte source');
+    } else {
+      try {
+        const recolte = db.getFirstSync(
+          `SELECT * FROM recoltes_maraicheres WHERE id = ?`,
+          [lot.recolte_maraichere_id]
+        );
+        maillon4.complet = !!(recolte?.date_recolte);
+        maillon4.details = `Récolte #${recolte?.id} du ${recolte?.date_recolte || '?'}`;
+      } catch (e) {
+        maillon4.details = 'Table recoltes_maraicheres inaccessible';
+      }
+    }
+    details.chaine.push(maillon4);
+
+    const maillon5 = {
+      nom: '5. Parcelle propre',
+      present: !!lot.parcelle_id,
+      complet: false,
+      details: '',
+    };
+    if (!lot.parcelle_id) {
+      maillon5.details = 'Aucune parcelle liée';
+      details.problemes.push('Maillon 5 manquant : lot production sans parcelle');
+    } else {
+      try {
+        const parcelle = db.getFirstSync(
+          `SELECT * FROM parcelles WHERE id = ?`,
+          [lot.parcelle_id]
+        );
+        maillon5.complet = !!(parcelle?.nom);
+        maillon5.details = `${parcelle?.nom || `#${lot.parcelle_id}`} (site ${lot.site_id})`;
+      } catch (e) {
+        maillon5.details = `Parcelle #${lot.parcelle_id}`;
+      }
+    }
+    details.chaine.push(maillon5);
+  }
+
+  // ─── ÉVALUATION ───
+  const maillonsManquants = details.chaine.filter(m => !m.present).length;
+  const maillonsIncomplets = details.chaine.filter(m => m.present && !m.complet).length;
+
+  details.nb_maillons = details.chaine.length;
+  details.nb_presents = details.chaine.filter(m => m.present).length;
+  details.nb_complets = details.chaine.filter(m => m.complet).length;
+
+  let statut = 'conforme';
+  if (maillonsManquants > 0) {
+    statut = 'non_conforme';
+  } else if (maillonsIncomplets > 0) {
+    statut = 'alerte';
+  }
+
+  return { statut, details };
+}

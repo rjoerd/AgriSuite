@@ -9,6 +9,10 @@ import {
   getAxesVerification,
   updateAxeVerification,
   calculerAxe1Tracabilite,
+  calculerAxe2Qualite,
+  calculerAxe3MassBalance,
+  calculerAxe4Recall,
+  calculerAxe5Coherence,
 } from '../database/exportTrack';
 import * as SQLite from 'expo-sqlite';
 
@@ -63,16 +67,26 @@ export default function VerifLotScreen({ route, navigation }) {
     setAxes(getAxesVerification(id));
   };
 
-  const lancerAxe1 = () => {
-    const resultat = calculerAxe1Tracabilite(lotId);
-    updateAxeVerification(verificationId, 1, resultat.statut, resultat.details, null);
-    setAxes(getAxesVerification(verificationId));
-    setVerification(getVerificationLot(verificationId));
-    Alert.alert(
-      'Axe 1 calculé',
-      `Statut : ${STATUT_BADGES[resultat.statut].label}\n\n${resultat.details.problemes?.join('\n') || 'Aucun problème détecté.'}`
-    );
-  };
+  const CALCULATEURS = {
+  1: calculerAxe1Tracabilite,
+  2: calculerAxe2Qualite,
+   3: calculerAxe3MassBalance,
+   4: calculerAxe4Recall,
+   5: calculerAxe5Coherence,
+};
+
+const lancerAxe = (numAxe) => {
+  const calc = CALCULATEURS[numAxe];
+  if (!calc) return;
+  const resultat = calc(lotId);
+  updateAxeVerification(verificationId, numAxe, resultat.statut, resultat.details, null);
+  setAxes(getAxesVerification(verificationId));
+  setVerification(getVerificationLot(verificationId));
+  Alert.alert(
+    `Axe ${numAxe} calculé`,
+    `Statut : ${STATUT_BADGES[resultat.statut].label}\n\n${resultat.details.problemes?.join('\n') || 'Aucun problème détecté.'}`
+  );
+};
 
 const renderDetailsAxe1 = (axe) => {
   if (!axe.details_json) return null;
@@ -99,6 +113,200 @@ const renderDetailsAxe1 = (axe) => {
           )}
         </View>
       ))}
+      {d.problemes?.length > 0 && (
+        <View style={styles.problemesBox}>
+          <Text style={styles.problemesTitre}>⚠ Problèmes détectés :</Text>
+          {d.problemes.map((p, i) => (
+            <Text key={i} style={styles.problemeItem}>• {p}</Text>
+          ))}
+        </View>
+      )}
+    </View>
+  );
+};
+
+const renderDetailsAxe2 = (axe) => {
+  if (!axe.details_json) return null;
+  let d;
+  try { d = JSON.parse(axe.details_json); } catch { return null; }
+  return (
+    <View style={styles.detailsBox}>
+      <Text style={styles.detailLabel}>
+        {d.nb_analyses || 0} analyse(s) — {d.nb_conformes || 0} conforme(s), {d.nb_non_conformes || 0} non conforme(s)
+      </Text>
+      {d.analyses?.map((a, i) => (
+        <View key={i} style={styles.sourceLine}>
+          <Text style={styles.detailText}>
+            {a.conforme === 1 ? '✓' : a.conforme === 0 ? '✗' : '·'} {a.type} : {a.valeur ?? '—'} {a.unite || ''}
+            {a.seuil_max != null ? ` (max ${a.seuil_max})` : ''}
+          </Text>
+          <Text style={styles.detailSub}>
+            {a.date} {a.laboratoire ? `· ${a.laboratoire}` : ''}
+          </Text>
+        </View>
+      ))}
+      {d.types_couverts?.length > 0 && (
+        <Text style={styles.detailSub}>
+          Types couverts : {d.types_couverts.join(', ')}
+        </Text>
+      )}
+      {d.problemes?.length > 0 && (
+        <View style={styles.problemesBox}>
+          <Text style={styles.problemesTitre}>⚠ Problèmes détectés :</Text>
+          {d.problemes.map((p, i) => (
+            <Text key={i} style={styles.problemeItem}>• {p}</Text>
+          ))}
+        </View>
+      )}
+    </View>
+  );
+};
+
+const renderDetailsAxe3 = (axe) => {
+  if (!axe.details_json) return null;
+  let d;
+  try { d = JSON.parse(axe.details_json); } catch { return null; }
+
+  const ecartCouleur = Math.abs(d.ecart_pct || 0) > 5
+    ? '#e57373'
+    : Math.abs(d.ecart_pct || 0) > 2
+    ? '#d4a04a'
+    : '#7ec87e';
+
+  return (
+    <View style={styles.detailsBox}>
+      <Text style={styles.detailLabel}>Bilan matière</Text>
+
+      <View style={styles.bilanLigne}>
+        <Text style={styles.bilanLabel}>Entrée :</Text>
+        <Text style={styles.bilanValeur}>{(d.entree_kg || 0).toFixed(1)} kg</Text>
+      </View>
+      <Text style={styles.detailSub}>{d.source_entree}</Text>
+
+      <View style={styles.bilanLigne}>
+        <Text style={styles.bilanLabel}>− Sortie (conditionné) :</Text>
+        <Text style={styles.bilanValeur}>{(d.sortie_kg || 0).toFixed(1)} kg</Text>
+      </View>
+      <Text style={styles.detailSub}>{d.nb_conditionnements} conditionnement(s)</Text>
+
+      <View style={styles.bilanLigne}>
+        <Text style={styles.bilanLabel}>− Pertes documentées :</Text>
+        <Text style={styles.bilanValeur}>{(d.pertes_documentees_kg || 0).toFixed(1)} kg</Text>
+      </View>
+      <Text style={styles.detailSub}>{d.nb_etapes} étape(s) post-récolte</Text>
+
+      <View style={[styles.bilanLigne, styles.bilanEcart]}>
+        <Text style={styles.bilanLabel}>= Écart :</Text>
+        <Text style={[styles.bilanValeur, { color: ecartCouleur, fontWeight: 'bold' }]}>
+          {(d.ecart_kg || 0).toFixed(1)} kg ({(d.ecart_pct || 0).toFixed(1)}%)
+        </Text>
+      </View>
+
+      {d.detail_etapes?.length > 0 && (
+        <View style={{ marginTop: 10 }}>
+          <Text style={styles.detailSub}>Détail des étapes :</Text>
+          {d.detail_etapes.map((e, i) => (
+            <Text key={i} style={styles.detailSub}>
+              · #{e.ordre} {e.type} : {e.entree?.toFixed(1) || '—'} → {e.sortie?.toFixed(1) || '—'} kg
+              {e.perte ? ` (perte ${e.perte.toFixed(1)} kg / ${e.taux_perte_pct?.toFixed(1)}%)` : ''}
+            </Text>
+          ))}
+        </View>
+      )}
+
+      {d.problemes?.length > 0 && (
+        <View style={styles.problemesBox}>
+          <Text style={styles.problemesTitre}>⚠ Problèmes détectés :</Text>
+          {d.problemes.map((p, i) => (
+            <Text key={i} style={styles.problemeItem}>• {p}</Text>
+          ))}
+        </View>
+      )}
+    </View>
+  );
+};
+
+const renderDetailsAxe5 = (axe) => {
+  if (!axe.details_json) return null;
+  let d;
+  try { d = JSON.parse(axe.details_json); } catch { return null; }
+
+  return (
+    <View style={styles.detailsBox}>
+      {d.engagements_lot?.length > 0 && (
+        <>
+          <Text style={styles.detailLabel}>Référentiels engagés sur le lot</Text>
+          {d.engagements_lot.map((e, i) => (
+            <Text key={i} style={styles.detailText}>
+              • {e.referentiel} — {e.statut} (depuis {e.date_engagement})
+            </Text>
+          ))}
+        </>
+      )}
+
+      {d.fournisseurs_verifies?.length > 0 && (
+        <View style={{ marginTop: 12 }}>
+          <Text style={styles.detailLabel}>
+            Fournisseurs amont ({d.fournisseurs_verifies.length})
+          </Text>
+          {d.fournisseurs_verifies.map((f, i) => (
+            <View key={i} style={styles.fournisseurBlock}>
+              <Text style={styles.detailText}>
+                {f.fournisseur} (1ère collecte {f.date_collecte_premiere})
+              </Text>
+              {f.engagements?.map((e, j) => (
+                <Text
+                  key={j}
+                  style={[
+                    styles.detailSub,
+                    { color: e.valide_a_la_collecte ? '#7ec87e' : '#e57373' },
+                  ]}
+                >
+                  {e.valide_a_la_collecte ? '✓' : '✗'} {e.referentiel} : {e.statut}
+                  {e.date_engagement ? ` (depuis ${e.date_engagement})` : ''}
+                </Text>
+              ))}
+            </View>
+          ))}
+        </View>
+      )}
+
+      {d.problemes?.length > 0 && (
+        <View style={styles.problemesBox}>
+          <Text style={styles.problemesTitre}>⚠ Problèmes détectés :</Text>
+          {d.problemes.map((p, i) => (
+            <Text key={i} style={styles.problemeItem}>• {p}</Text>
+          ))}
+        </View>
+      )}
+    </View>
+  );
+};
+
+const renderDetailsAxe4 = (axe) => {
+  if (!axe.details_json) return null;
+  let d;
+  try { d = JSON.parse(axe.details_json); } catch { return null; }
+
+  return (
+    <View style={styles.detailsBox}>
+      <Text style={styles.detailLabel}>
+        Chaîne de traçabilité — {d.nb_complets || 0}/{d.nb_maillons || 0} maillons complets
+      </Text>
+
+      {d.chaine?.map((m, i) => {
+        const icone = !m.present ? '✗' : m.complet ? '✓' : '⚠';
+        const couleur = !m.present ? '#e57373' : m.complet ? '#7ec87e' : '#d4a04a';
+        return (
+          <View key={i} style={styles.maillonBlock}>
+            <Text style={[styles.maillonTitre, { color: couleur }]}>
+              {icone} {m.nom}
+            </Text>
+            <Text style={styles.detailSub}>{m.details || '—'}</Text>
+          </View>
+        );
+      })}
+
       {d.problemes?.length > 0 && (
         <View style={styles.problemesBox}>
           <Text style={styles.problemesTitre}>⚠ Problèmes détectés :</Text>
@@ -167,22 +375,25 @@ const renderDetailsAxe1 = (axe) => {
               <View style={styles.axeContenu}>
                 <Text style={styles.axeDescription}>📖 {axeDef.description}</Text>
 
-                {axeDef.num === 1 ? (
-                  <>
-                    {renderDetailsAxe1(axe)}
-                    <TouchableOpacity style={styles.btnAction} onPress={lancerAxe1}>
-                      <Text style={styles.btnActionText}>
-                        {axe.statut === 'na' ? '🔄 Lancer la vérification' : '🔄 Recalculer'}
-                      </Text>
-                    </TouchableOpacity>
-                  </>
-                ) : (
-                  <View style={styles.placeholderBox}>
-                    <Text style={styles.placeholderText}>
-                      🚧 Axe {axeDef.num} — implémentation prévue Session 9c-conceptuel-suite
-                    </Text>
-                  </View>
-                )}
+                {axeDef.num === 1 && renderDetailsAxe1(axe)}
+{axeDef.num === 2 && renderDetailsAxe2(axe)}
+{axeDef.num === 3 && renderDetailsAxe3(axe)}
+{axeDef.num === 4 && renderDetailsAxe4(axe)}
+{axeDef.num === 5 && renderDetailsAxe5(axe)}
+
+{CALCULATEURS[axeDef.num] ? (
+  <TouchableOpacity style={styles.btnAction} onPress={() => lancerAxe(axeDef.num)}>
+    <Text style={styles.btnActionText}>
+      {axe.statut === 'na' ? '🔄 Lancer la vérification' : '🔄 Recalculer'}
+    </Text>
+  </TouchableOpacity>
+) : (
+  <View style={styles.placeholderBox}>
+    <Text style={styles.placeholderText}>
+      🚧 Axe {axeDef.num} — implémentation prévue dans la suite de cette session
+    </Text>
+  </View>
+)}
               </View>
             )}
           </View>
@@ -223,6 +434,39 @@ const styles = StyleSheet.create({
   sourceLine: { marginBottom: 4 },
   detailText: { color: '#ddd', fontSize: 12 },
   detailSub: { color: '#a8c8a8', fontSize: 11, marginLeft: 12, marginTop: 2 },
+  bilanLigne: {
+  flexDirection: 'row',
+  justifyContent: 'space-between',
+  marginTop: 6,
+},
+bilanLabel: { color: '#ddd', fontSize: 13 },
+bilanValeur: { color: '#fff', fontSize: 13, fontFamily: 'monospace' },
+bilanEcart: {
+  borderTopWidth: 1,
+  borderTopColor: '#3a5a3a',
+  paddingTop: 8,
+  marginTop: 8,
+},
+fournisseurBlock: {
+  backgroundColor: '#243d24',
+  padding: 8,
+  borderRadius: 6,
+  marginTop: 6,
+},
+
+maillonBlock: {
+  backgroundColor: '#243d24',
+  padding: 8,
+  borderRadius: 6,
+  marginTop: 6,
+  borderLeftWidth: 3,
+  borderLeftColor: '#3a5a3a',
+},
+maillonTitre: {
+  fontSize: 13,
+  fontWeight: '600',
+  marginBottom: 2,
+},
   problemesBox: { backgroundColor: '#3a1a1a', padding: 10, borderRadius: 6, marginTop: 10 },
   problemesTitre: { color: '#e57373', fontSize: 12, fontWeight: '600', marginBottom: 6 },
   problemeItem: { color: '#f5b5b5', fontSize: 12, marginLeft: 4 },
