@@ -312,6 +312,42 @@ export const initExportTrack = () => {
     );
   `);
 
+  // ============================================
+// VÉRIFICATIONS DE LOTS (Session 9c-conceptuel)
+// ============================================
+
+db.execSync(`
+  CREATE TABLE IF NOT EXISTS verifications_lots (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    lot_id INTEGER NOT NULL,
+    date_verification TEXT NOT NULL,
+    verificateur TEXT NOT NULL,
+    referentiel_cible TEXT,
+    statut_global TEXT NOT NULL DEFAULT 'en_cours'
+      CHECK (statut_global IN ('en_cours','conforme','alertes','non_conforme')),
+    notes_globales TEXT,
+    created_at TEXT DEFAULT (datetime('now','localtime')),
+    FOREIGN KEY (lot_id) REFERENCES lots(id)
+  );
+`);
+
+db.execSync(`
+  CREATE TABLE IF NOT EXISTS verifications_lots_axes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    verification_id INTEGER NOT NULL,
+    axe INTEGER NOT NULL CHECK (axe BETWEEN 1 AND 5),
+    statut TEXT NOT NULL DEFAULT 'na'
+      CHECK (statut IN ('na','conforme','alerte','non_conforme')),
+    details_json TEXT,
+    notes TEXT,
+    created_at TEXT DEFAULT (datetime('now','localtime')),
+    FOREIGN KEY (verification_id) REFERENCES verifications_lots(id) ON DELETE CASCADE,
+    UNIQUE(verification_id, axe)
+  );
+`);
+
+console.log('✅ Tables verifications_lots créées');
+
   try { db.execSync(`CREATE INDEX IF NOT EXISTS idx_docs_expedition ON documents_export(expedition_id);`); } catch (e) {}
 
   // ─── Migration : aligne statut sur est_cloture ───
@@ -1220,3 +1256,163 @@ export const seedExportTrack = () => {
   }
   console.log(`[ExportTrack seed] ${ZONES_COLLECTE_REFERENCE.length} zones de collecte insérées`);
 };
+
+// ============================================
+// CRUD Vérifications de lots
+// ============================================
+
+export function creerVerificationLot(lotId, verificateur, referentielCible = null) {
+  const result = db.runSync(
+    `INSERT INTO verifications_lots (lot_id, date_verification, verificateur, referentiel_cible)
+     VALUES (?, datetime('now','localtime'), ?, ?)`,
+    [lotId, verificateur, referentielCible]
+  );
+  // Initialise les 5 axes en 'na'
+  for (let axe = 1; axe <= 5; axe++) {
+    db.runSync(
+      `INSERT INTO verifications_lots_axes (verification_id, axe, statut) VALUES (?, ?, 'na')`,
+      [result.lastInsertRowId, axe]
+    );
+  }
+  return result.lastInsertRowId;
+}
+
+export function getVerificationLot(verificationId) {
+  return db.getFirstSync(
+    `SELECT * FROM verifications_lots WHERE id = ?`,
+    [verificationId]
+  );
+}
+
+export function getVerificationsParLot(lotId) {
+  return db.getAllSync(
+    `SELECT * FROM verifications_lots WHERE lot_id = ? ORDER BY date_verification DESC`,
+    [lotId]
+  );
+}
+
+export function getAxesVerification(verificationId) {
+  return db.getAllSync(
+    `SELECT * FROM verifications_lots_axes WHERE verification_id = ? ORDER BY axe`,
+    [verificationId]
+  );
+}
+
+export function updateAxeVerification(verificationId, axe, statut, detailsJson, notes) {
+  db.runSync(
+    `UPDATE verifications_lots_axes
+     SET statut = ?, details_json = ?, notes = ?
+     WHERE verification_id = ? AND axe = ?`,
+    [statut, JSON.stringify(detailsJson || {}), notes || null, verificationId, axe]
+  );
+  // Recalcule statut global
+  const axes = getAxesVerification(verificationId);
+  let statutGlobal = 'conforme';
+  if (axes.some(a => a.statut === 'non_conforme')) statutGlobal = 'non_conforme';
+  else if (axes.some(a => a.statut === 'alerte')) statutGlobal = 'alertes';
+  else if (axes.every(a => a.statut === 'na')) statutGlobal = 'en_cours';
+  db.runSync(
+    `UPDATE verifications_lots SET statut_global = ? WHERE id = ?`,
+    [statutGlobal, verificationId]
+  );
+}
+
+// ============================================
+// AXE 1 — Calcul automatique traçabilité ascendante
+// ============================================
+
+export function calculerAxe1Tracabilite(lotId) {
+  const lot = db.getFirstSync(`SELECT * FROM lots WHERE id = ?`, [lotId]);
+  if (!lot) return { statut: 'non_conforme', details: { erreur: 'Lot introuvable' } };
+
+  // Source de vérité = colonne filiere (et non fournisseur_id qui peut
+  // être NULL pour un lot collecte multi-fournisseurs)
+  const filiere = lot.filiere === 'collecte' ? 'B' : 'A';
+
+  const details = {
+    filiere,
+    sources: [],
+    problemes: [],
+  };
+
+  if (filiere === 'B') {
+    // Filière B : remonter via les bons de collecte → fournisseurs → parcelles producteur
+    const bons = db.getAllSync(
+      `SELECT * FROM bons_collecte
+       WHERE lot_id = ? AND est_rectifie_par IS NULL`,
+      [lotId]
+    );
+
+    if (bons.length === 0) {
+      details.problemes.push('Aucun bon de collecte rattaché au lot');
+    }
+
+    // Regroupement par fournisseur (un fournisseur peut avoir plusieurs bons)
+    const fournisseursVus = new Map();
+    for (const bon of bons) {
+      if (!fournisseursVus.has(bon.fournisseur_id)) {
+        const fournisseur = db.getFirstSync(
+          `SELECT * FROM fournisseurs WHERE id = ?`,
+          [bon.fournisseur_id]
+        );
+
+        // Parcelles producteur (table peut ne pas exister selon avancement Session 9)
+        let parcelles = [];
+        try {
+          parcelles = db.getAllSync(
+            `SELECT * FROM parcelles_producteur WHERE fournisseur_id = ?`,
+            [bon.fournisseur_id]
+          );
+        } catch (e) {
+          // Table parcelles_producteur absente → on continue sans bloquer
+        }
+
+        fournisseursVus.set(bon.fournisseur_id, {
+          fournisseur: fournisseur?.nom || `Fournisseur #${bon.fournisseur_id}`,
+          zone: fournisseur?.zone_collecte_code || '?',
+          nb_bons: 1,
+          quantite_totale_kg: bon.quantite_kg || 0,
+          nb_parcelles: parcelles.length,
+          parcelles_avec_gps: parcelles.filter(p => p.latitude && p.longitude).length,
+        });
+
+        if (parcelles.length === 0) {
+          details.problemes.push(
+            `Fournisseur ${fournisseur?.nom || '#' + bon.fournisseur_id} : aucune parcelle déclarée`
+          );
+        }
+      } else {
+        const f = fournisseursVus.get(bon.fournisseur_id);
+        f.nb_bons += 1;
+        f.quantite_totale_kg += (bon.quantite_kg || 0);
+      }
+    }
+    details.sources = Array.from(fournisseursVus.values());
+
+  } else {
+    // Filière A : remonter via la récolte maraîchère → planche → site
+    if (lot.recolte_maraichere_id) {
+      const recolte = db.getFirstSync(
+        `SELECT * FROM recoltes_maraicheres WHERE id = ?`,
+        [lot.recolte_maraichere_id]
+      );
+      details.sources.push({
+        recolte_id: recolte?.id,
+        planche_id: recolte?.planche_id,
+        date_recolte: recolte?.date_recolte,
+      });
+    } else {
+      details.problemes.push('Filière A mais aucune récolte source rattachée');
+    }
+
+    if (!lot.parcelle_id) {
+      details.problemes.push('Aucune parcelle source identifiée');
+    }
+  }
+
+  let statut = 'conforme';
+  if (details.problemes.length > 0) {
+    statut = details.problemes.length >= 2 ? 'non_conforme' : 'alerte';
+  }
+  return { statut, details };
+}

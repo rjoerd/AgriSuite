@@ -405,7 +405,23 @@ export default function LotDetailScreen({ navigation, route }) {
             </Text>
           </View>
         )}
-
+<TouchableOpacity
+  style={{
+    backgroundColor: '#d4a04a',
+    padding: 14,
+    borderRadius: 8,
+    marginVertical: 8,
+    alignItems: 'center',
+  }}
+  onPress={() => navigation.navigate('VerifLot', {
+    lotId: lot.id,
+    lotCode: lot.code_lot,
+  })}
+>
+  <Text style={{ color: '#1a2e1a', fontWeight: '600', fontSize: 15 }}>
+    🔍 Vérifier la traçabilité
+  </Text>
+</TouchableOpacity>
         {/* Mention clôturé */}
         {isCloture && !isRectifie && (
           <View style={styles.cardCloture}>

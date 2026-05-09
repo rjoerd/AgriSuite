@@ -82,6 +82,7 @@ import SanctionFormScreen from './screens/SanctionFormScreen';
 import ParcelleConversionScreen from './screens/ParcelleConversionScreen';
 import ProducteurParcelleFormScreen from './screens/ProducteurParcelleFormScreen';
 import ProducteurParcellesScreen from './screens/ProducteurParcellesScreen';
+import VerifLotScreen from './screens/VerifLotScreen';
 
 // Initialisation synchrone avant tout rendu
 initDB();
@@ -371,6 +372,11 @@ export default function App() {
   name="ProducteurParcelles"
   component={ProducteurParcellesScreen}
   options={{ title: 'Parcelles producteur', headerStyle: { backgroundColor: '#1a2e1a' }, headerTintColor: '#fff' }}
+/>
+<Stack.Screen
+  name="VerifLot"
+  component={VerifLotScreen}
+  options={{ title: 'Vérification lot', headerStyle: { backgroundColor: '#1a2e1a' }, headerTintColor: '#fff' }}
 />
       </Stack.Navigator>
     </NavigationContainer>
