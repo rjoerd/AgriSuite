@@ -22,7 +22,11 @@ import { seedCertifTrackRainforest } from './database/certifTrackRainforest';
 import { initSCI } from './database/sci';
 import { initSciInspectionsTables } from './database/sciInspections';
 import { initOperateur, migrateOperateurSchema, seedOperateur } from './database/operateur';
-import { reclasserExigencesParNiveau } from './database/certifTrackNiveaux';
+import { reclasserExigencesParNiveau, ajusterCasLimites } from './database/certifTrackNiveaux';
+import { initHaccp } from './database/haccp';
+import { seedHaccp } from './database/haccpData';
+import { seedHaccpModesOperatoires } from './database/haccpModesOperatoires';
+import { initHaccpSurveillance } from './database/haccpSurveillance';
 
 // Screens — Phase 0a / 0b : Sites, parcelles, CropEngine
 import SiteListScreen from './screens/SiteListScreen';
@@ -86,6 +90,11 @@ import ProducteurParcelleFormScreen from './screens/ProducteurParcelleFormScreen
 import ProducteurParcellesScreen from './screens/ProducteurParcellesScreen';
 import VerifLotScreen from './screens/VerifLotScreen';
 import OperateurFormScreen from './screens/OperateurFormScreen';
+import DiagnosticNiveauxScreen from './screens/DiagnosticNiveauxScreen';
+import HaccpHomeScreen from './screens/HaccpHomeScreen';
+import HaccpEtudeDetailScreen from './screens/HaccpEtudeDetailScreen';
+import ReleveCcpFormScreen from './screens/ReleveCcpFormScreen';
+import RelevesCcpHistoryScreen from './screens/RelevesCcpHistoryScreen';
 
 // Initialisation synchrone avant tout rendu
 initDB();
@@ -110,7 +119,11 @@ initOperateur();
 migrateOperateurSchema();
 seedOperateur();
 reclasserExigencesParNiveau();
-
+ajusterCasLimites();
+initHaccp();
+seedHaccp();
+seedHaccpModesOperatoires();
+initHaccpSurveillance();
 
 const Stack = createNativeStackNavigator();
 
@@ -386,6 +399,27 @@ export default function App() {
   options={{ title: 'Vérification lot', headerStyle: { backgroundColor: '#1a2e1a' }, headerTintColor: '#fff' }}
 />
 <Stack.Screen name="OperateurForm" component={OperateurFormScreen} options={{ title: '🏢 Opérateur' }} />
+<Stack.Screen name="DiagnosticNiveaux" component={DiagnosticNiveauxScreen} options={{ title: '🔬 Diagnostic' }} />
+<Stack.Screen 
+  name="HaccpHome" 
+  component={HaccpHomeScreen} 
+  options={{ title: '🧪 HACCP', headerStyle: { backgroundColor: '#1a2e1a' }, headerTintColor: '#7ec87e' }} 
+/>
+<Stack.Screen 
+  name="HaccpEtudeDetail" 
+  component={HaccpEtudeDetailScreen} 
+  options={{ title: 'Étude HACCP', headerStyle: { backgroundColor: '#1a2e1a' }, headerTintColor: '#7ec87e' }} 
+/>
+<Stack.Screen 
+  name="ReleveCcpForm" 
+  component={ReleveCcpFormScreen} 
+  options={{ title: '📏 Nouveau relevé CCP', headerStyle: { backgroundColor: '#1a2e1a' }, headerTintColor: '#7ec87e' }} 
+/>
+<Stack.Screen
+  name="RelevesCcpHistory"
+  component={RelevesCcpHistoryScreen}
+  options={{ title: '📜 Historique relevés', headerStyle: { backgroundColor: '#1a2e1a' }, headerTintColor: '#7ec87e' }}
+/>
       </Stack.Navigator>
     </NavigationContainer>
   );

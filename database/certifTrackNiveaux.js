@@ -214,3 +214,28 @@ export const reclasserExigencesParNiveau = () => {
 
   return resultatsGlobal;
 };
+
+// ============================================================
+// AJUSTEMENTS MANUELS — cas limites identifiés en diagnostic 9d2
+// ============================================================
+
+export const ajusterCasLimites = () => {
+  const ajustements = [
+    { code: 'FT-PRIME-09', niveau: 'operateur' },
+    { code: 'HACCP-PRP7-01', niveau: 'operateur' },
+    { code: 'HACCP-PRP7-02', niveau: 'operateur' },
+  ];
+
+  let ajustees = 0;
+  for (const aj of ajustements) {
+    const result = db.runSync(
+      `UPDATE exigences_referentiel SET niveau_application = ? WHERE code_exigence = ?`,
+      [aj.niveau, aj.code]
+    );
+    if (result.changes > 0) ajustees++;
+  }
+
+  if (ajustees > 0) {
+    console.log(`✅ Ajustements cas limites 9d2 : ${ajustees}/3 exigences mises à jour`);
+  }
+};

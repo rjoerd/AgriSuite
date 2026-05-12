@@ -345,7 +345,12 @@ export default function OperateurFormScreen({ navigation }) {
                 )}
               />
             )}
-
+<TouchableOpacity
+  style={{ backgroundColor: '#3d2424', padding: 8, borderRadius: 6, marginBottom: 8 }}
+  onPress={() => navigation.navigate('DiagnosticNiveaux')}
+>
+  <Text style={{ color: '#d4a04a', fontSize: 11, textAlign: 'center' }}>🔬 Diagnostic niveaux (temp)</Text>
+</TouchableOpacity>
             <TouchableOpacity
               style={styles.btnFermer}
               onPress={() => setShowEngagerModal(false)}
