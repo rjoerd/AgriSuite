@@ -1,6 +1,6 @@
 // screens/CertifTrackHomeScreen.js
 // Écran d'accueil CertifTrack — Dashboard catalogue + engagements
-// Phase 3 Session 7
+// Phase 3 Session 7 + 8 + 9d3 (carte Opérateur)
 
 import React, { useState, useEffect, useCallback } from 'react';
 import {
@@ -24,30 +24,58 @@ import {
   countAlertesActives,
   getToutesAlertesActives,
 } from '../database/certifTrack';
+import { getOperateur, getEngagementsOperateur } from '../database/operateur';
 
 export default function CertifTrackHomeScreen({ navigation }) {
-const [kpi, setKpi] = useState(null);
+  const [kpi, setKpi] = useState(null);
   const [referentielsStats, setReferentielsStats] = useState([]);
   const [derniersEngagements, setDerniersEngagements] = useState([]);
   const [alertesKpi, setAlertesKpi] = useState({ total: 0, critiques: 0, avertissements: 0 });
   const [alertesActives, setAlertesActives] = useState([]);
+  const [operateurInfo, setOperateurInfo] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
 
   const loadData = () => {
     try {
-setKpi(getKpiCertifTrack());
+      setKpi(getKpiCertifTrack());
       setReferentielsStats(getStatsEngagementsParReferentiel());
       const all = getAllEngagements();
       setDerniersEngagements(all.slice(0, 5)); // 5 plus récents
 
-      // NOUVEAU Session 8 : charger les alertes globales
+      // Session 8 : alertes globales
       try {
         setAlertesKpi(countAlertesActives());
         const allAlertes = getToutesAlertesActives() || [];
-        setAlertesActives(allAlertes.slice(0, 3)); // top 3
+        setAlertesActives(allAlertes.slice(0, 3));
       } catch (e) {
         setAlertesKpi({ total: 0, critiques: 0, avertissements: 0 });
         setAlertesActives([]);
+      }
+
+      // 🆕 Session 9d3 : bloc Opérateur
+      try {
+        const op = getOperateur();
+        if (op) {
+          const engagements = getEngagementsOperateur(op.id);
+          let totalExigences = 0;
+          let totalConformes = 0;
+          let totalNcMajeures = 0;
+          engagements.forEach((eng) => {
+            totalExigences += eng.nb_exigences_operateur || 0;
+            totalConformes += eng.nb_conformes_operateur || 0;
+            totalNcMajeures += eng.nb_nc_majeures || 0;
+          });
+          setOperateurInfo({
+            operateur: op,
+            nb_engagements: engagements.length,
+            total_exigences: totalExigences,
+            total_conformes: totalConformes,
+            pct_conformite: totalExigences > 0 ? Math.round((totalConformes / totalExigences) * 100) : 0,
+            nc_majeures: totalNcMajeures,
+          });
+        }
+      } catch (err) {
+        console.log('[CertifTrackHome] Erreur chargement opérateur:', err.message);
       }
     } catch (error) {
       console.error('Erreur chargement CertifTrack:', error);
@@ -77,8 +105,6 @@ setKpi(getKpiCertifTrack());
     return acc;
   }, {});
 
-
-
   return (
     <ScrollView
       style={styles.container}
@@ -90,6 +116,68 @@ setKpi(getKpiCertifTrack());
         <Text style={styles.title}>🛡️ CertifTrack</Text>
         <Text style={styles.subtitle}>Catalogue référentiels & engagements</Text>
       </View>
+
+      {/* 🆕 Session 9d3 — Carte Opérateur (audit système qualité global) */}
+      {operateurInfo && (
+        <TouchableOpacity
+          style={styles.operateurCard}
+          onPress={() => navigation.navigate('OperateurForm')}
+          activeOpacity={0.7}
+        >
+          <View style={styles.operateurHeader}>
+            <Text style={styles.operateurIcone}>🏢</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.operateurTitre}>{operateurInfo.operateur.nom_legal}</Text>
+              <Text style={styles.operateurSousTitre}>Opérateur — système qualité global</Text>
+            </View>
+            <Text style={styles.operateurChevron}>›</Text>
+          </View>
+
+          {operateurInfo.nb_engagements === 0 ? (
+            <View style={styles.operateurEmpty}>
+              <Text style={styles.operateurEmptyText}>
+                Aucun référentiel engagé. Tapez pour en activer un.
+              </Text>
+            </View>
+          ) : (
+            <View style={styles.operateurStats}>
+              <View style={styles.operateurScoreRow}>
+                <View style={styles.operateurBarOuter}>
+                  <View
+                    style={[
+                      styles.operateurBarInner,
+                      {
+                        width: `${operateurInfo.pct_conformite}%`,
+                        backgroundColor:
+                          operateurInfo.pct_conformite >= 80
+                            ? '#7ec87e'
+                            : operateurInfo.pct_conformite >= 50
+                            ? '#d4a04a'
+                            : '#c87e7e',
+                      },
+                    ]}
+                  />
+                </View>
+                <Text style={styles.operateurScoreText}>
+                  {operateurInfo.total_conformes}/{operateurInfo.total_exigences} ({operateurInfo.pct_conformite}%)
+                </Text>
+              </View>
+
+              <View style={styles.operateurFooter}>
+                <Text style={styles.operateurFooterTexte}>
+                  🔍 {operateurInfo.nb_engagements} référentiel{operateurInfo.nb_engagements > 1 ? 's' : ''} engagé{operateurInfo.nb_engagements > 1 ? 's' : ''}
+                </Text>
+                {operateurInfo.nc_majeures > 0 && (
+                  <Text style={styles.operateurNcMajeure}>
+                    ⚠ {operateurInfo.nc_majeures} NC majeure{operateurInfo.nc_majeures > 1 ? 's' : ''}
+                  </Text>
+                )}
+              </View>
+            </View>
+          )}
+        </TouchableOpacity>
+        
+      )}
 
       {/* KPI Banner */}
       {kpi && (
@@ -115,7 +203,8 @@ setKpi(getKpiCertifTrack());
           </View>
         </View>
       )}
-{/* NOUVEAU Session 8 : Bandeau alertes conformité globales */}
+
+      {/* Session 8 — Bandeau alertes conformité globales */}
       {alertesKpi.total > 0 && (
         <View style={styles.alertesGlobales}>
           <View style={styles.alertesGlobalesHeader}>
@@ -155,6 +244,7 @@ setKpi(getKpiCertifTrack());
           )}
         </View>
       )}
+
       {/* Sous-banner cibles */}
       {kpi && (kpi.lots_engages > 0 || kpi.sites_engages > 0 || kpi.cultures_engagees > 0) && (
         <View style={styles.ciblesBanner}>
@@ -163,18 +253,28 @@ setKpi(getKpiCertifTrack());
           </Text>
         </View>
       )}
-{/* Bouton accès SCI Inspections */}
-<TouchableOpacity
-  style={styles.btnSciAccess}
-  onPress={() => navigation.navigate('PlanificationInspections')}
+
+      {/* Bouton accès SCI Inspections */}
+      <TouchableOpacity
+        style={styles.btnSciAccess}
+        onPress={() => navigation.navigate('PlanificationInspections')}
+      >
+        <Text style={styles.btnSciAccessIcon}>🛡</Text>
+        <View style={styles.btnSciAccessTextWrap}>
+          <Text style={styles.btnSciAccessTitle}>Inspections SCI</Text>
+          <Text style={styles.btnSciAccessSub}>Planification, terrain, sanctions producteurs</Text>
+        </View>
+        <Text style={styles.btnSciAccessChevron}>›</Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity
+  style={{ backgroundColor: '#243d24', borderRadius: 10, padding: 14, marginVertical: 8, borderLeftWidth: 4, borderLeftColor: '#7ec87e' }}
+  onPress={() => navigation.navigate('HaccpHome')}
 >
-  <Text style={styles.btnSciAccessIcon}>🛡</Text>
-  <View style={styles.btnSciAccessTextWrap}>
-    <Text style={styles.btnSciAccessTitle}>Inspections SCI</Text>
-    <Text style={styles.btnSciAccessSub}>Planification, terrain, sanctions producteurs</Text>
-  </View>
-  <Text style={styles.btnSciAccessChevron}>›</Text>
+  <Text style={{ color: '#7ec87e', fontSize: 15, fontWeight: 'bold' }}>🧪 HACCP — Études</Text>
+  <Text style={{ color: '#a8c8a8', fontSize: 11, marginTop: 4 }}>Sécurité alimentaire par produit</Text>
 </TouchableOpacity>
+
       {/* Catalogue référentiels par type */}
       <Text style={styles.sectionTitle}>📚 Catalogue référentiels</Text>
 
@@ -214,7 +314,6 @@ setKpi(getKpiCertifTrack());
               </View>
             </TouchableOpacity>
           ))}
-          
         </View>
       ))}
 
@@ -239,6 +338,8 @@ setKpi(getKpiCertifTrack());
                 {eng.cible_type === 'lot' && '📦 Lot'}
                 {eng.cible_type === 'site' && '🗺️ Site'}
                 {eng.cible_type === 'culture' && '🌱 Culture'}
+                {eng.cible_type === 'fournisseur' && '👤 Fournisseur'}
+                {eng.cible_type === 'operateur' && '🏢 Opérateur'}
                 {' · '}#{eng.cible_id}
               </Text>
               <Text style={styles.engDate}>Engagé le {eng.date_engagement}</Text>
@@ -267,28 +368,8 @@ setKpi(getKpiCertifTrack());
           Interne (SCI) pour la filière collecte arrive en v3.
         </Text>
       </View>
-<TouchableOpacity
-  style={{
-    backgroundColor: '#243d24',
-    borderRadius: 10,
-    padding: 14,
-    marginBottom: 16,
-    borderLeftWidth: 4,
-    borderLeftColor: '#7ec87e',
-  }}
-  onPress={() => navigation.navigate('OperateurForm')}
->
-  <Text style={{ color: '#7ec87e', fontSize: 15, fontWeight: 'bold' }}>
-    🏢 Opérateur (test 9d1)
-  </Text>
-  <Text style={{ color: '#a8c8a8', fontSize: 12, marginTop: 4 }}>
-    Saisir/modifier les infos de l'exportateur
-  </Text>
-</TouchableOpacity>
       <View style={{ height: 40 }} />
     </ScrollView>
-
-    
   );
 }
 
@@ -312,6 +393,96 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#a8c8a8',
     marginTop: 4,
+  },
+
+  // 🆕 Session 9d3 — Carte Opérateur
+  operateurCard: {
+    backgroundColor: '#243d24',
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 16,
+    borderLeftWidth: 5,
+    borderLeftColor: '#7ec87e',
+  },
+  operateurHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  operateurIcone: {
+    fontSize: 28,
+    marginRight: 10,
+  },
+  operateurTitre: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#fff',
+  },
+  operateurSousTitre: {
+    fontSize: 11,
+    color: '#a8c8a8',
+    marginTop: 2,
+    fontStyle: 'italic',
+  },
+  operateurChevron: {
+    fontSize: 22,
+    color: '#7ec87e',
+    marginLeft: 8,
+  },
+  operateurEmpty: {
+    backgroundColor: '#1a2e1a',
+    borderRadius: 6,
+    padding: 8,
+    marginTop: 4,
+  },
+  operateurEmptyText: {
+    color: '#8aa88a',
+    fontSize: 12,
+    fontStyle: 'italic',
+    textAlign: 'center',
+  },
+  operateurStats: {
+    marginTop: 4,
+  },
+  operateurScoreRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  operateurBarOuter: {
+    flex: 1,
+    height: 10,
+    backgroundColor: '#1a2e1a',
+    borderRadius: 5,
+    marginRight: 10,
+    overflow: 'hidden',
+  },
+  operateurBarInner: {
+    height: 10,
+    borderRadius: 5,
+  },
+  operateurScoreText: {
+    fontSize: 12,
+    color: '#a8c8a8',
+    fontWeight: '600',
+    minWidth: 90,
+    textAlign: 'right',
+  },
+  operateurFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 4,
+  },
+  operateurFooterTexte: {
+    fontSize: 12,
+    color: '#7ec87e',
+    fontWeight: '500',
+  },
+  operateurNcMajeure: {
+    fontSize: 11,
+    color: '#ff9f9f',
+    fontWeight: '700',
   },
 
   // KPI Banner
@@ -343,7 +514,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#3a5a3a',
   },
 
-  // NOUVEAU Session 8 — Alertes globales
+  // Alertes globales
   alertesGlobales: {
     backgroundColor: '#2a2014',
     borderRadius: 10,
@@ -401,7 +572,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 4,
   },
-  
+
   ciblesBanner: {
     backgroundColor: '#243d24',
     borderRadius: 8,
@@ -576,37 +747,39 @@ const styles = StyleSheet.create({
     lineHeight: 16,
     fontStyle: 'italic',
   },
+
+  // Bouton SCI
   btnSciAccess: {
-  flexDirection: 'row',
-  alignItems: 'center',
-  backgroundColor: '#243d24',
-  borderRadius: 10,
-  padding: 14,
-  marginTop: 12,
-  marginBottom: 8,
-  borderLeftWidth: 4,
-  borderLeftColor: '#d4a04a',
-},
-btnSciAccessIcon: {
-  fontSize: 26,
-  marginRight: 12,
-},
-btnSciAccessTextWrap: {
-  flex: 1,
-},
-btnSciAccessTitle: {
-  fontSize: 15,
-  fontWeight: '700',
-  color: '#fff',
-},
-btnSciAccessSub: {
-  fontSize: 11,
-  color: '#a8c8a8',
-  marginTop: 2,
-},
-btnSciAccessChevron: {
-  fontSize: 26,
-  color: '#d4a04a',
-  fontWeight: '300',
-},
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#243d24',
+    borderRadius: 10,
+    padding: 14,
+    marginTop: 12,
+    marginBottom: 8,
+    borderLeftWidth: 4,
+    borderLeftColor: '#d4a04a',
+  },
+  btnSciAccessIcon: {
+    fontSize: 26,
+    marginRight: 12,
+  },
+  btnSciAccessTextWrap: {
+    flex: 1,
+  },
+  btnSciAccessTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#fff',
+  },
+  btnSciAccessSub: {
+    fontSize: 11,
+    color: '#a8c8a8',
+    marginTop: 2,
+  },
+  btnSciAccessChevron: {
+    fontSize: 26,
+    color: '#d4a04a',
+    fontWeight: '300',
+  },
 });
