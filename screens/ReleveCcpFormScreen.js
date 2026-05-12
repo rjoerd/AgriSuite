@@ -25,27 +25,16 @@ const db = SQLite.openDatabaseSync('agrisuite.db');
 const getLotsActifs = () => {
   try {
     return db.getAllSync(
-      `SELECT id, code_lot, filiere, culture_nom_fr as culture_nom, statut
-       FROM lots
-       WHERE statut IN ('en_cours', 'transformation', 'conditionnement', 'pret')
-       ORDER BY date_creation DESC
+      `SELECT l.id, l.code_lot, l.filiere, c.nom_fr as culture_nom, l.statut
+       FROM lots l
+       LEFT JOIN cultures c ON l.culture_id = c.id
+       WHERE l.est_cloture = 0
+       ORDER BY l.cree_le DESC
        LIMIT 50`
     );
   } catch (err) {
-    // Fallback si le schéma diffère
-    try {
-      return db.getAllSync(
-        `SELECT l.id, l.code_lot, l.filiere, c.nom_fr as culture_nom, l.statut
-         FROM lots l
-         LEFT JOIN cultures c ON l.culture_id = c.id
-         WHERE l.statut != 'cloture'
-         ORDER BY l.created_at DESC
-         LIMIT 50`
-      );
-    } catch (err2) {
-      console.log('[ReleveCcpForm] Lecture lots impossible:', err2.message);
-      return [];
-    }
+    console.log('[ReleveCcpForm] Lecture lots impossible:', err.message);
+    return [];
   }
 };
 

@@ -80,7 +80,22 @@ export default function HaccpHomeScreen({ navigation }) {
           Sécurité alimentaire — Codex Alimentarius CXC 1-1969
         </Text>
       </View>
-
+<TouchableOpacity
+  style={{ backgroundColor: '#2a3e2a', padding: 16, borderRadius: 8, marginBottom: 16, borderLeftWidth: 3, borderLeftColor: '#d4a04a' }}
+  onPress={() => navigation.navigate('HaccpDashboard')}
+>
+  <Text style={{ color: '#d4a04a', fontSize: 16, fontWeight: 'bold' }}>📊 Dashboard surveillance</Text>
+  <Text style={{ color: '#ccc', fontSize: 12, marginTop: 4 }}>Vue responsable qualité — KPI, CCP en retard, NC ouvertes</Text>
+</TouchableOpacity>
+<TouchableOpacity
+  style={{ backgroundColor: '#243d24', padding: 16, borderRadius: 8, marginBottom: 12, borderLeftWidth: 3, borderLeftColor: '#7ec87e' }}
+  onPress={() => navigation.navigate('PrpHome')}
+>
+  <Text style={{ color: '#7ec87e', fontSize: 16, fontWeight: 'bold' }}>🧼 Programmes Pré-Requis (PRP)</Text>
+  <Text style={{ color: '#a8c8a8', fontSize: 12, marginTop: 4 }}>
+    Hygiène, nettoyage, nuisibles, eau, maintenance, déchets, réception — Codex CXC 1-1969
+  </Text>
+</TouchableOpacity>
       {/* KPI Banner */}
       {kpi && (
         <View style={styles.kpiBanner}>
@@ -179,6 +194,7 @@ export default function HaccpHomeScreen({ navigation }) {
                 </Text>
               )}
             </TouchableOpacity>
+            
           );
         })
       )}

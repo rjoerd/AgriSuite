@@ -50,6 +50,7 @@ import {
   getQuantiteActuelleLot,
 } from '../database/exportTrack';
 import { getCultureById } from '../database/cropEngine';
+import { getOperateur, getEngagementsOperateur } from '../database/operateur';
 
 // ============================================================
 // HELPERS
@@ -136,6 +137,8 @@ export default function ConditionnementFormScreen({ navigation, route }) {
   const [erreurs, setErreurs] = useState({});
   const [modalOuvert, setModalOuvert] = useState(null);
 
+  const [operateurInfo, setOperateurInfo] = useState(null);
+
   // ============================================================
   // CHARGEMENT
   // ============================================================
@@ -171,6 +174,31 @@ export default function ConditionnementFormScreen({ navigation, route }) {
       console.error('[ConditionnementForm] Erreur chargement :', err);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
+    // 🆕 Session 9d3 — Bloc Opérateur
+try {
+  const op = getOperateur();
+  if (op) {
+    const engagements = getEngagementsOperateur(op.id);
+    let totalExigences = 0;
+    let totalConformes = 0;
+    let totalNcMajeures = 0;
+    engagements.forEach((eng) => {
+      totalExigences += eng.nb_exigences_operateur || 0;
+      totalConformes += eng.nb_conformes_operateur || 0;
+      totalNcMajeures += eng.nb_nc_majeures || 0;
+    });
+    setOperateurInfo({
+      operateur: op,
+      nb_engagements: engagements.length,
+      total_exigences: totalExigences,
+      total_conformes: totalConformes,
+      pct_conformite: totalExigences > 0 ? Math.round((totalConformes / totalExigences) * 100) : 0,
+      nc_majeures: totalNcMajeures,
+    });
+  }
+} catch (err) {
+  console.log('[CertifTrackHome] Erreur chargement opérateur:', err.message);
+}
   }, [lotId, navigation]);
 
   // ============================================================
@@ -713,7 +741,68 @@ export default function ConditionnementFormScreen({ navigation, route }) {
 
         <View style={{ height: 32 }} />
       </ScrollView>
+{/* 🆕 Session 9d3 — Carte Opérateur (audit système qualité global) */}
+{operateurInfo && (
+  <TouchableOpacity
+    style={styles.operateurCard}
+    onPress={() => navigation.navigate('OperateurForm')}
+    activeOpacity={0.7}
+  >
+    <View style={styles.operateurHeader}>
+      <Text style={styles.operateurIcone}>🏢</Text>
+      <View style={{ flex: 1 }}>
+        <Text style={styles.operateurTitre}>{operateurInfo.operateur.nom_legal}</Text>
+        <Text style={styles.operateurSousTitre}>Opérateur — système qualité global</Text>
+      </View>
+      <Text style={styles.operateurChevron}>›</Text>
+    </View>
 
+    {operateurInfo.nb_engagements === 0 ? (
+      <View style={styles.operateurEmpty}>
+        <Text style={styles.operateurEmptyText}>
+          Aucun référentiel engagé. Tapez pour en activer un.
+        </Text>
+      </View>
+    ) : (
+      <View style={styles.operateurStats}>
+        {/* Score conformité */}
+        <View style={styles.operateurScoreRow}>
+          <View style={styles.operateurBarOuter}>
+            <View
+              style={[
+                styles.operateurBarInner,
+                {
+                  width: `${operateurInfo.pct_conformite}%`,
+                  backgroundColor:
+                    operateurInfo.pct_conformite >= 80
+                      ? '#7ec87e'
+                      : operateurInfo.pct_conformite >= 50
+                      ? '#d4a04a'
+                      : '#c87e7e',
+                },
+              ]}
+            />
+          </View>
+          <Text style={styles.operateurScoreText}>
+            {operateurInfo.total_conformes}/{operateurInfo.total_exigences} ({operateurInfo.pct_conformite}%)
+          </Text>
+        </View>
+
+        {/* Footer : engagements + NC majeures */}
+        <View style={styles.operateurFooter}>
+          <Text style={styles.operateurFooterTexte}>
+            🔍 {operateurInfo.nb_engagements} référentiel{operateurInfo.nb_engagements > 1 ? 's' : ''} engagé{operateurInfo.nb_engagements > 1 ? 's' : ''}
+          </Text>
+          {operateurInfo.nc_majeures > 0 && (
+            <Text style={styles.operateurNcMajeure}>
+              ⚠ {operateurInfo.nc_majeures} NC majeure{operateurInfo.nc_majeures > 1 ? 's' : ''}
+            </Text>
+          )}
+        </View>
+      </View>
+    )}
+  </TouchableOpacity>
+)}
       {/* Modaux */}
       <ModalSelection
         visible={modalOuvert !== null}
@@ -1078,4 +1167,93 @@ const styles = StyleSheet.create({
   },
   modalItemLabel: { color: COLORS.texteDoux, fontSize: 14, fontWeight: '500' },
   modalItemSub: { color: COLORS.texteSecond, fontSize: 12, marginTop: 3 },
+  // Session 9d3 — Carte Opérateur
+operateurCard: {
+  backgroundColor: '#243d24',
+  borderRadius: 12,
+  padding: 14,
+  marginBottom: 16,
+  borderLeftWidth: 5,
+  borderLeftColor: '#7ec87e',
+},
+operateurHeader: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  marginBottom: 8,
+},
+operateurIcone: {
+  fontSize: 28,
+  marginRight: 10,
+},
+operateurTitre: {
+  fontSize: 16,
+  fontWeight: 'bold',
+  color: '#fff',
+},
+operateurSousTitre: {
+  fontSize: 11,
+  color: '#a8c8a8',
+  marginTop: 2,
+  fontStyle: 'italic',
+},
+operateurChevron: {
+  fontSize: 22,
+  color: '#7ec87e',
+  marginLeft: 8,
+},
+operateurEmpty: {
+  backgroundColor: '#1a2e1a',
+  borderRadius: 6,
+  padding: 8,
+  marginTop: 4,
+},
+operateurEmptyText: {
+  color: '#8aa88a',
+  fontSize: 12,
+  fontStyle: 'italic',
+  textAlign: 'center',
+},
+operateurStats: {
+  marginTop: 4,
+},
+operateurScoreRow: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  marginBottom: 8,
+},
+operateurBarOuter: {
+  flex: 1,
+  height: 10,
+  backgroundColor: '#1a2e1a',
+  borderRadius: 5,
+  marginRight: 10,
+  overflow: 'hidden',
+},
+operateurBarInner: {
+  height: 10,
+  borderRadius: 5,
+},
+operateurScoreText: {
+  fontSize: 12,
+  color: '#a8c8a8',
+  fontWeight: '600',
+  minWidth: 90,
+  textAlign: 'right',
+},
+operateurFooter: {
+  flexDirection: 'row',
+  justifyContent: 'space-between',
+  alignItems: 'center',
+  marginTop: 4,
+},
+operateurFooterTexte: {
+  fontSize: 12,
+  color: '#7ec87e',
+  fontWeight: '500',
+},
+operateurNcMajeure: {
+  fontSize: 11,
+  color: '#ff9f9f',
+  fontWeight: '700',
+},
 });

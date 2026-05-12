@@ -27,6 +27,7 @@ import { initHaccp } from './database/haccp';
 import { seedHaccp } from './database/haccpData';
 import { seedHaccpModesOperatoires } from './database/haccpModesOperatoires';
 import { initHaccpSurveillance } from './database/haccpSurveillance';
+import { initPRP, seedPRP } from './database/prp';
 
 // Screens — Phase 0a / 0b : Sites, parcelles, CropEngine
 import SiteListScreen from './screens/SiteListScreen';
@@ -95,6 +96,16 @@ import HaccpHomeScreen from './screens/HaccpHomeScreen';
 import HaccpEtudeDetailScreen from './screens/HaccpEtudeDetailScreen';
 import ReleveCcpFormScreen from './screens/ReleveCcpFormScreen';
 import RelevesCcpHistoryScreen from './screens/RelevesCcpHistoryScreen';
+import DiagnosticSchemaScreen from './screens/DiagnosticSchemaScreen';
+import HaccpDashboardScreen from './screens/HaccpDashboardScreen';
+import ActionCorrectiveFormScreen from './screens/ActionCorrectiveFormScreen';
+import PrpHomeScreen from './screens/PrpHomeScreen';
+import PrpDetailScreen from './screens/PrpDetailScreen';
+import PrpRegistreFormScreen from './screens/PrpRegistreFormScreen';
+import PrpActionCorrectiveScreen from './screens/PrpActionCorrectiveScreen';
+import PrpDashboardScreen from './screens/PrpDashboardScreen';
+import PrpTachesJourScreen from './screens/PrpTachesJourScreen';
+import PrpExportPdfScreen from './screens/PrpExportPdfScreen';
 
 // Initialisation synchrone avant tout rendu
 initDB();
@@ -124,6 +135,8 @@ initHaccp();
 seedHaccp();
 seedHaccpModesOperatoires();
 initHaccpSurveillance();
+initPRP();
+seedPRP();
 
 const Stack = createNativeStackNavigator();
 
@@ -420,6 +433,16 @@ export default function App() {
   component={RelevesCcpHistoryScreen}
   options={{ title: '📜 Historique relevés', headerStyle: { backgroundColor: '#1a2e1a' }, headerTintColor: '#7ec87e' }}
 />
+<Stack.Screen name="DiagnosticSchema" component={DiagnosticSchemaScreen} options={{ title: 'Diagnostic' }} />
+<Stack.Screen name="HaccpDashboard" component={HaccpDashboardScreen} options={{ title: 'Surveillance HACCP' }} />
+<Stack.Screen name="ActionCorrectiveForm" component={ActionCorrectiveFormScreen} options={{ title: 'Action corrective', headerShown: false }} />
+<Stack.Screen name="PrpHome" component={PrpHomeScreen} options={{ title: 'PRP', headerShown: false }} />
+<Stack.Screen name="PrpDetail" component={PrpDetailScreen} options={{ title: 'Détail PRP', headerShown: false }} />
+<Stack.Screen name="PrpRegistreForm" component={PrpRegistreFormScreen} options={{ headerShown: false }} />
+<Stack.Screen name="PrpActionCorrective" component={PrpActionCorrectiveScreen} options={{ headerShown: false }} />
+<Stack.Screen name="PrpDashboard" component={PrpDashboardScreen} options={{ headerShown: false }} />
+<Stack.Screen name="PrpTachesJour" component={PrpTachesJourScreen} options={{ headerShown: false }} />
+<Stack.Screen name="PrpExportPdf" component={PrpExportPdfScreen} options={{ headerShown: false }} />
       </Stack.Navigator>
     </NavigationContainer>
   );

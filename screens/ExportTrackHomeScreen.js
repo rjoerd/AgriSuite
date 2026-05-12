@@ -328,6 +328,9 @@ export default function ExportTrackHomeScreen({ navigation }) {
               <Text style={styles.navLabel}>Expéditions</Text>
               <Text style={styles.navBadge}>—</Text>
             </TouchableOpacity>
+            <TouchableOpacity onPress={() => navigation.navigate('DiagnosticSchema')}>
+  <Text style={{ color: '#7ec87e', padding: 16 }}>🔍 Diagnostic schéma</Text>
+</TouchableOpacity>
           </View>
         </View>
 
