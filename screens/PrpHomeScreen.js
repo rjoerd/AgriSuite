@@ -141,6 +141,13 @@ export default function PrpHomeScreen({ navigation }) {
   <Text style={{ color: '#7ec87e', fontSize: 15, fontWeight: 'bold' }}>📅 Mes tâches PRP du jour</Text>
   <Text style={{ color: '#888', fontSize: 11, marginTop: 4 }}>Procédures à exécuter aujourd'hui + retards</Text>
 </TouchableOpacity>
+<TouchableOpacity
+  style={{ backgroundColor: '#2a3e2a', padding: 16, borderRadius: 8, marginTop: 12, borderLeftWidth: 3, borderLeftColor: '#7eaac8', alignItems: 'center' }}
+  onPress={() => navigation.navigate('ConformitePrpHaccp')}
+>
+  <Text style={{ color: '#7eaac8', fontSize: 15, fontWeight: 'bold' }}>🔗 Valider HACCP depuis PRP</Text>
+  <Text style={{ color: '#888', fontSize: 11, marginTop: 4 }}>Auto-cocher exigences HACCP depuis registres PRP</Text>
+</TouchableOpacity>
         {/* BOUTON DASHBOARD */}
         <TouchableOpacity
           style={styles.btnDashboard}

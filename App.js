@@ -28,6 +28,7 @@ import { seedHaccp } from './database/haccpData';
 import { seedHaccpModesOperatoires } from './database/haccpModesOperatoires';
 import { initHaccpSurveillance } from './database/haccpSurveillance';
 import { initPRP, seedPRP } from './database/prp';
+import { migrationStatutsExigencesAuto } from './database/migrationStatutsExigencesAuto';
 
 // Screens — Phase 0a / 0b : Sites, parcelles, CropEngine
 import SiteListScreen from './screens/SiteListScreen';
@@ -106,6 +107,7 @@ import PrpActionCorrectiveScreen from './screens/PrpActionCorrectiveScreen';
 import PrpDashboardScreen from './screens/PrpDashboardScreen';
 import PrpTachesJourScreen from './screens/PrpTachesJourScreen';
 import PrpExportPdfScreen from './screens/PrpExportPdfScreen';
+import ConformitePrpHaccpScreen from './screens/ConformitePrpHaccpScreen';
 
 // Initialisation synchrone avant tout rendu
 initDB();
@@ -137,6 +139,7 @@ seedHaccpModesOperatoires();
 initHaccpSurveillance();
 initPRP();
 seedPRP();
+migrationStatutsExigencesAuto();
 
 const Stack = createNativeStackNavigator();
 
@@ -443,6 +446,11 @@ export default function App() {
 <Stack.Screen name="PrpDashboard" component={PrpDashboardScreen} options={{ headerShown: false }} />
 <Stack.Screen name="PrpTachesJour" component={PrpTachesJourScreen} options={{ headerShown: false }} />
 <Stack.Screen name="PrpExportPdf" component={PrpExportPdfScreen} options={{ headerShown: false }} />
+<Stack.Screen 
+  name="ConformitePrpHaccp" 
+  component={ConformitePrpHaccpScreen}
+  options={{ headerShown: false }}
+/>
       </Stack.Navigator>
     </NavigationContainer>
   );
