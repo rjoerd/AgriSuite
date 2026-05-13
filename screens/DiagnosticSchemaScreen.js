@@ -3,7 +3,7 @@ import { View, Text, ScrollView, StyleSheet } from 'react-native';
 import * as SQLite from 'expo-sqlite';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-const db = SQLite.openDatabaseSync('agrisuite.db');
+const db = SQLite.openDatabaseSync('certifpilot.db');
 
 export default function DiagnosticSchemaScreen() {
   const insets = useSafeAreaInsets();

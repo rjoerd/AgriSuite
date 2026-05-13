@@ -18,7 +18,7 @@
 import * as SQLite from 'expo-sqlite';
 import { calculerSignificatif } from './haccp';
 
-const db = SQLite.openDatabaseSync('agrisuite.db');
+const db = SQLite.openDatabaseSync('certifpilot.db');
 
 // ============================================================
 // CATALOGUE DES 9 ÉTUDES HACCP

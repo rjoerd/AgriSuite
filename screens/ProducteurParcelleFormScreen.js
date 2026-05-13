@@ -10,7 +10,7 @@ import {
 import * as SQLite from 'expo-sqlite';
 import * as Location from 'expo-location';
 
-const db = SQLite.openDatabaseSync('agrisuite.db');
+const db = SQLite.openDatabaseSync('certifpilot.db');
 
 export default function ProducteurParcelleFormScreen({ route, navigation }) {
   const { fournisseurId, parcelleId } = route.params;

@@ -38,7 +38,7 @@ import {
 } from '../database/certifTrack';
 import * as SQLite from 'expo-sqlite';
 
-const db = SQLite.openDatabaseSync('agrisuite.db');
+const db = SQLite.openDatabaseSync('certifpilot.db');
 
 // ============================================================
 // HELPERS — récupération entités liées

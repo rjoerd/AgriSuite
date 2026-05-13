@@ -9,7 +9,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { TYPES_PRP, getTypePrpInfo } from '../database/prp';
 
-const db = SQLite.openDatabaseSync('agrisuite.db');
+const db = SQLite.openDatabaseSync('certifpilot.db');
 
 // Conversion fréquence texte → nb jours max entre exécutions
 function frequenceEnJours(freq) {

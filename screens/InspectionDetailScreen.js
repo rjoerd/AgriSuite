@@ -16,7 +16,7 @@ import * as SQLite from 'expo-sqlite';
 import { genererEtPartager } from '../services/pdfRapportInspection';
 import { getSanctionsParInspection, getTypeSanctionLabel, getTypeSanctionColor, getTypeSanctionIcon } from '../database/sciSanctions';
 
-const db = SQLite.openDatabaseSync('agrisuite.db');
+const db = SQLite.openDatabaseSync('certifpilot.db');
 
 const COULEURS = {
   bg: '#1a2e1a',

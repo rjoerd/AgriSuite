@@ -16,7 +16,7 @@ import {
 } from '../database/exportTrack';
 import * as SQLite from 'expo-sqlite';
 
-const db = SQLite.openDatabaseSync('agrisuite.db');
+const db = SQLite.openDatabaseSync('certifpilot.db');
 
 const AXES = [
   { num: 1, titre: 'Traçabilité ascendante', icone: '🔗',

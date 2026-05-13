@@ -1,5 +1,5 @@
 import * as SQLite from 'expo-sqlite';
-const db = SQLite.openDatabaseSync('agrisuite.db');
+const db = SQLite.openDatabaseSync('certifpilot.db');
 
 export function seedForagePro() {
   const count = db.getFirstSync(`SELECT COUNT(*) as n FROM animaux`);

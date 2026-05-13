@@ -12,7 +12,7 @@ import {
   annulerConversion, COULEURS_STATUT, LIBELLES_STATUT,
 } from '../database/conversionBio';
 
-const db = SQLite.openDatabaseSync('agrisuite.db');
+const db = SQLite.openDatabaseSync('certifpilot.db');
 
 export default function ParcelleConversionScreen({ route, navigation }) {
   const { parcelleId } = route.params;

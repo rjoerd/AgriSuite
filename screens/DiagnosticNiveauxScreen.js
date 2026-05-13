@@ -11,7 +11,7 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView } from 'react-native';
 import * as SQLite from 'expo-sqlite';
 
-const db = SQLite.openDatabaseSync('agrisuite.db');
+const db = SQLite.openDatabaseSync('certifpilot.db');
 
 // Mots-clés qui DEVRAIENT pointer vers niveau fournisseur
 const MOTS_CLES_SUSPECTS = [

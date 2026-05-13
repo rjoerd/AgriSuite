@@ -8,7 +8,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as SQLite from 'expo-sqlite';
 import { insertCultureEnCours } from '../database/maraicher';
 
-const db = SQLite.openDatabaseSync('agrisuite.db');
+const db = SQLite.openDatabaseSync('certifpilot.db');
 
 const COULEURS = {
   fond: '#1a2e1a', carte: '#243524', bordure: '#2d4a2d',

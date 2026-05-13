@@ -6,7 +6,7 @@ import {
 import * as SQLite from 'expo-sqlite';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-const db = SQLite.openDatabaseSync('agrisuite.db');
+const db = SQLite.openDatabaseSync('certifpilot.db');
 
 // 5 types d'action corrective selon ISO 22000 §8.9.2 + Codex CXC 1-1969
 // 5 types d'action corrective selon ISO 22000 §8.9.2 + Codex CXC 1-1969

@@ -26,7 +26,7 @@ import {
   countPreuvesByExigence,
 } from './certifTrack';
 
-const db = SQLite.openDatabaseSync('agrisuite.db');
+const db = SQLite.openDatabaseSync('certifpilot.db');
 
 // ============================================================
 // HELPERS

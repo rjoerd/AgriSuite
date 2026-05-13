@@ -15,7 +15,7 @@
 
 import * as SQLite from 'expo-sqlite';
 
-const db = SQLite.openDatabaseSync('agrisuite.db');
+const db = SQLite.openDatabaseSync('certifpilot.db');
 
 const REF_CODE = 'FAIRTRADE_FLO';
 

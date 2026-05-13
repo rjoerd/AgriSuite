@@ -11,7 +11,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import * as SQLite from 'expo-sqlite';
 import { COULEURS_STATUT, LIBELLES_STATUT } from '../database/conversionBio';
 
-const db = SQLite.openDatabaseSync('agrisuite.db');
+const db = SQLite.openDatabaseSync('certifpilot.db');
 
 export default function ProducteurParcellesScreen({ route, navigation }) {
   const { fournisseurId } = route.params;

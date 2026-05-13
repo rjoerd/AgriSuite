@@ -37,7 +37,7 @@ import {
 } from '../database/certifTrack';
 import * as SQLite from 'expo-sqlite';
 
-const db = SQLite.openDatabaseSync('agrisuite.db');
+const db = SQLite.openDatabaseSync('certifpilot.db');
 
 const STATUTS = ['vise', 'en_conversion', 'certifie', 'suspendu', 'abandonne'];
 

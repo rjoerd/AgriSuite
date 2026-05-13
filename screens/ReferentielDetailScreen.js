@@ -22,7 +22,7 @@ import {
 } from '../database/certifTrack';
 import * as SQLite from 'expo-sqlite';
 
-const db = SQLite.openDatabaseSync('agrisuite.db');
+const db = SQLite.openDatabaseSync('certifpilot.db');
 
 // Helper local : récupérer tous les engagements d'un référentiel
 const getEngagementsByReferentiel = (referentielId) => {

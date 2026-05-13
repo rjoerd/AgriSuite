@@ -4,7 +4,7 @@
 
 import * as SQLite from 'expo-sqlite';
 
-const db = SQLite.openDatabaseSync('agrisuite.db');
+const db = SQLite.openDatabaseSync('certifpilot.db');
 
 export function migrationStatutsExigencesAuto() {
   // Idempotent : try/catch sur chaque ALTER (SQLite ne fait pas IF NOT EXISTS sur colonne)

@@ -14,7 +14,7 @@ import {
   getTypePrpInfo,
 } from '../database/prp';
 
-const db = SQLite.openDatabaseSync('agrisuite.db');
+const db = SQLite.openDatabaseSync('certifpilot.db');
 
 const RESULTATS = [
   {

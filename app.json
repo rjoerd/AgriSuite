@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "AgriSuite",
-    "slug": "AgriSuite",
+    "name": "CertifPilot",
+    "slug": "certifpilot",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",

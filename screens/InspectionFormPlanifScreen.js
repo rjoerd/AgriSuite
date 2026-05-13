@@ -21,7 +21,7 @@ import {
   getInspectionPlanifiee,
 } from '../database/sciInspections';
 
-const db = SQLite.openDatabaseSync('agrisuite.db');
+const db = SQLite.openDatabaseSync('certifpilot.db');
 
 const COULEURS = {
   bg: '#1a2e1a',

@@ -8,7 +8,7 @@ import * as SQLite from 'expo-sqlite';
 let _db = null;
 function getDb() {
   if (!_db) {
-    _db = SQLite.openDatabaseSync('agrisuite.db');
+    _db = SQLite.openDatabaseSync('certifpilot.db');
   }
   return _db;
 }

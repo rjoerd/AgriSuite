@@ -7,7 +7,7 @@ import * as Sharing from 'expo-sharing';
 import * as SQLite from 'expo-sqlite';
 import { getTypePrpInfo, getResultatLabel } from '../database/prp';
 
-const db = SQLite.openDatabaseSync('agrisuite.db');
+const db = SQLite.openDatabaseSync('certifpilot.db');
 
 // ============================================================
 // PDF — REGISTRES D'UN PRP SUR UNE PÉRIODE

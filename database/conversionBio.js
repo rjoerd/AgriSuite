@@ -4,7 +4,7 @@
 
 import * as SQLite from 'expo-sqlite';
 
-const db = SQLite.openDatabaseSync('agrisuite.db');
+const db = SQLite.openDatabaseSync('certifpilot.db');
 
 // Durée conversion selon type culture
 const DUREE_CONVERSION_MOIS = {

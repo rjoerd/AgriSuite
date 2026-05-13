@@ -45,7 +45,7 @@ import {
 import { evaluerEngagement, getRegleAutoLabel } from '../database/conformiteEngine';
 import * as SQLite from 'expo-sqlite';
 
-const db = SQLite.openDatabaseSync('agrisuite.db');
+const db = SQLite.openDatabaseSync('certifpilot.db');
 
 const getEngagementInfos = (engagementId) => {
   return db.getFirstSync(

@@ -16,7 +16,7 @@ import {
 import { getReferentiels } from '../database/certifTrack';
 import * as SQLite from 'expo-sqlite';
 
-const db = SQLite.openDatabaseSync('agrisuite.db');
+const db = SQLite.openDatabaseSync('certifpilot.db');
 
 const getContratById = (id) => db.getFirstSync('SELECT * FROM contrats_producteur WHERE id = ?', [id]);
 

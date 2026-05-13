@@ -2,7 +2,7 @@
 // Seed des 13 cultures maraîchères — Hautes Terres Madagascar + Site D Moramanga
 
 import * as SQLite from 'expo-sqlite';
-const db = SQLite.openDatabaseSync('agrisuite.db');
+const db = SQLite.openDatabaseSync('certifpilot.db');
 
 // ─────────────────────────────────────────────
 // DONNÉES — 13 cultures maraîchères

@@ -9,7 +9,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getTypePrpInfo } from '../database/prp';
 
-const db = SQLite.openDatabaseSync('agrisuite.db');
+const db = SQLite.openDatabaseSync('certifpilot.db');
 
 function frequenceEnJours(freq) {
   if (!freq) return 30;

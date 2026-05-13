@@ -4,7 +4,7 @@ import * as SQLite from 'expo-sqlite';
 import { useFocusEffect } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-const db = SQLite.openDatabaseSync('agrisuite.db');
+const db = SQLite.openDatabaseSync('certifpilot.db');
 
 // Conversion fréquence texte → nb jours max entre relevés
 function frequenceEnJours(freq) {

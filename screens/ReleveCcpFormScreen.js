@@ -19,7 +19,7 @@ import {
 } from '../database/haccpSurveillance';
 import * as SQLite from 'expo-sqlite';
 
-const db = SQLite.openDatabaseSync('agrisuite.db');
+const db = SQLite.openDatabaseSync('certifpilot.db');
 
 // Récupère les lots actifs ExportTrack (non clôturés)
 const getLotsActifs = () => {
