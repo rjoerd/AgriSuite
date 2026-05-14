@@ -35,7 +35,6 @@ import {
 } from '../database/exportTrack';
 import { getAllSites, getParcellesBySite } from '../database/db';
 import { getAllCultures } from '../database/cropEngine';
-import { getAllRecoltesMaraicheres, getRecolteById } from '../database/maraicher';
 
 // ============================================================
 // HELPERS
@@ -100,68 +99,6 @@ export default function LotProductionFormScreen({ navigation, route }) {
   // v2 : toggle pour afficher les récoltes déjà rattachées (caché par défaut)
   const [montrerRecoltesUtilisees, setMontrerRecoltesUtilisees] = useState(false);
 
-  // ============================================================
-  // CHARGEMENT INITIAL
-  // ============================================================
-
-  useEffect(() => {
-    try {
-      setSites(getAllSites ? getAllSites() : []);
-      setCultures(getAllCultures ? getAllCultures() : []);
-
-      const recentes = getAllRecoltesMaraicheres
-        ? getAllRecoltesMaraicheres(60)
-        : [];
-      setRecoltes(recentes);
-    } catch (err) {
-      console.error('[LotProductionForm] Erreur chargement référentiels :', err);
-      Alert.alert(
-        'Erreur',
-        'Impossible de charger les données de référence (sites, cultures, récoltes).'
-      );
-    }
-  }, []);
-
-  // ============================================================
-  // PRÉ-REMPLISSAGE DEPUIS RÉCOLTE SOURCE
-  // ============================================================
-
-  useEffect(() => {
-    if (!recolteSourceId) return;
-    try {
-      const recolte = getRecolteById ? getRecolteById(recolteSourceId) : null;
-      if (!recolte) return;
-
-      // v2 : avertir si la récolte est déjà rattachée à un autre lot
-      if (recolte.est_rattachee_a_lot && recolte.lot_code) {
-        Alert.alert(
-          '⚠️ Récolte déjà rattachée',
-          `Cette récolte est déjà liée au lot ${recolte.lot_code}.\n\n` +
-          `Une récolte ne peut alimenter qu'un seul lot export ` +
-          `(traçabilité BIO/Fairtrade). La sauvegarde sera refusée.\n\n` +
-          `Pour rectifier le lot existant, utilise le mécanisme de ` +
-          `rectification (à venir Session 5).`,
-          [
-            {
-              text: 'Détacher cette récolte',
-              onPress: () => setRecolteSourceId(null),
-              style: 'destructive',
-            },
-            { text: 'OK', style: 'cancel' },
-          ]
-        );
-        return;
-      }
-
-      if (recolte.site_id) setSiteId(recolte.site_id);
-      if (recolte.parcelle_id) setParcelleId(recolte.parcelle_id);
-      if (recolte.culture_id) setCultureId(recolte.culture_id);
-      if (recolte.date_recolte) setDateDebut(recolte.date_recolte);
-      if (recolte.quantite_kg) setQuantiteBruteKg(String(recolte.quantite_kg));
-    } catch (err) {
-      console.error('[LotProductionForm] Erreur pré-remplissage récolte :', err);
-    }
-  }, [recolteSourceId]);
 
   // ============================================================
   // CHARGEMENT DES PARCELLES DU SITE

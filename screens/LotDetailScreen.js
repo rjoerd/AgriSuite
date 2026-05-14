@@ -44,7 +44,7 @@ import {
   getQuantiteActuelleLot,
 } from '../database/exportTrack';
 import { getCultureById } from '../database/cropEngine';
-import { getRecolteById } from '../database/maraicher';
+
 import { getSiteById, getParcelleById } from '../database/db';
 import { getEngagementsForCible, getStatutLabel, getStatutColor, getScoreEngagement, countExigencesByReferentiel } from '../database/certifTrack';
 

@@ -22,7 +22,7 @@ import {
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { getAllRecoltesMaraicheres } from '../database/maraicher';
+
 import { getAllSites } from '../database/db';
 
 const formatKg = (kg) => {
