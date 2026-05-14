@@ -44,7 +44,7 @@ import {
   getLotById,
   insertAnalyse,
 } from '../database/exportTrack';
-import { getCultureById } from '../database/cropEngine';
+
 import {
   TYPES_ANALYSE,
   getSeuilPredefini,

@@ -25,7 +25,7 @@ import {
   getBonsCollecteByLot,
   getFournisseurById,
 } from '../database/exportTrack';
-import { getCultureById } from '../database/cropEngine';
+
 import { getParametresEntreprise } from '../database/parametresEntreprise';
 
 // Imports résilients (modules optionnels)

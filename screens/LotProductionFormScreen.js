@@ -34,7 +34,7 @@ import {
   getLotById,
 } from '../database/exportTrack';
 import { getAllSites, getParcellesBySite } from '../database/db';
-import { getAllCultures } from '../database/cropEngine';
+
 
 // ============================================================
 // HELPERS

@@ -49,7 +49,7 @@ import {
   getConditionnementsByLot,
   getQuantiteActuelleLot,
 } from '../database/exportTrack';
-import { getCultureById } from '../database/cropEngine';
+
 import { getOperateur, getEngagementsOperateur } from '../database/operateur';
 
 // ============================================================

@@ -46,7 +46,7 @@ import {
   getProchainOrdreEtape,
   getQuantiteActuelleLot,
 } from '../database/exportTrack';
-import { getCultureById } from '../database/cropEngine';
+
 
 // ============================================================
 // HELPERS

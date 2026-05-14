@@ -30,7 +30,7 @@ import {
   getQuantiteActuelleLot,
 } from '../database/exportTrack';
 // getAllCultures ajouté dans cropEngine.js (Session 4 — voir patch cropEngine_PATCH.md)
-import { getAllCultures } from '../database/cropEngine';
+
 
 // ============================================================
 // HELPERS

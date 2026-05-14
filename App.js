@@ -4,8 +4,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { StatusBar } from 'expo-status-bar';
 
 // Database
-import { initDB, seedCropEngine } from './database/db';
-import { initCropEngine } from './database/cropEngine';
+import { initDB } from './database/db';
 import { seedExportTrack } from './database/exportTrack';
 import { initParametresEntreprise } from './database/parametresEntreprise';
 import { initCertifTrack } from './database/certifTrack';
@@ -31,7 +30,6 @@ import SiteListScreen from './screens/SiteListScreen';
 import SiteDetailScreen from './screens/SiteDetailScreen';
 import SiteFormScreen from './screens/SiteFormScreen';
 import ParcelleMapScreen from './screens/ParcelleMapScreen';
-import CropEngineScreen from './screens/CropEngineScreen';
 
 // Screens — Phase 3 : ExportTrack
 import ExportTrackHomeScreen from './screens/ExportTrackHomeScreen';
@@ -93,8 +91,6 @@ import ConformitePrpHaccpScreen from './screens/ConformitePrpHaccpScreen';
 
 // Initialisation synchrone avant tout rendu
 initDB();
-initCropEngine();
-seedCropEngine();
 seedExportTrack();
 initParametresEntreprise();
 initCertifTrack();
@@ -154,12 +150,7 @@ export default function App() {
             title: `📍 ${route.params?.siteCode || 'Carte'}`,
           })}
         />
-        <Stack.Screen
-          name="CropEngine"
-          component={CropEngineScreen}
-          options={{ headerShown: false }}
-        />
-
+       
           {/* ─── Phase 3 — ExportTrack ─── */}
         <Stack.Screen
           name="ExportTrackHome"

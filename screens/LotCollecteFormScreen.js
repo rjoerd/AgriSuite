@@ -46,7 +46,7 @@ import {
   getLotById,
   getAllZonesCollecte,
 } from '../database/exportTrack';
-import { getAllCultures } from '../database/cropEngine';
+
 
 // ============================================================
 // HELPERS

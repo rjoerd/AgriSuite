@@ -52,7 +52,7 @@ import {
   getConditionnementsByLot,
   getBonsCollecteByLot,
 } from '../database/exportTrack';
-import { getCultureById } from '../database/cropEngine';
+
 
 // ============================================================
 // HELPERS
