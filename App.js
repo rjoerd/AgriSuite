@@ -5,9 +5,7 @@ import { StatusBar } from 'expo-status-bar';
 
 // Database
 import { initDB, seedCropEngine } from './database/db';
-import { seedMaraicher } from './database/maraicherData';
 import { initCropEngine } from './database/cropEngine';
-import { initMaraicher } from './database/maraicher';
 import { seedExportTrack } from './database/exportTrack';
 import { initParametresEntreprise } from './database/parametresEntreprise';
 import { initCertifTrack } from './database/certifTrack';
@@ -34,13 +32,6 @@ import SiteDetailScreen from './screens/SiteDetailScreen';
 import SiteFormScreen from './screens/SiteFormScreen';
 import ParcelleMapScreen from './screens/ParcelleMapScreen';
 import CropEngineScreen from './screens/CropEngineScreen';
-
-// Screens — Phase 2 : MaraîcherGuide
-import MaraicherHomeScreen from './screens/MaraicherHomeScreen';
-import PlancheListScreen from './screens/PlancheListScreen';
-import PlancheFormScreen from './screens/PlancheFormScreen';
-import CultureFormScreen from './screens/CultureFormScreen';
-import SaisieRecolteScreen from './screens/SaisieRecolteScreen';
 
 // Screens — Phase 3 : ExportTrack
 import ExportTrackHomeScreen from './screens/ExportTrackHomeScreen';
@@ -103,9 +94,7 @@ import ConformitePrpHaccpScreen from './screens/ConformitePrpHaccpScreen';
 // Initialisation synchrone avant tout rendu
 initDB();
 initCropEngine();
-initMaraicher();
 seedCropEngine();
-seedMaraicher();
 seedExportTrack();
 initParametresEntreprise();
 initCertifTrack();
@@ -171,34 +160,7 @@ export default function App() {
           options={{ headerShown: false }}
         />
 
-        {/* ─── Phase 2 — MaraîcherGuide ─── */}
-        <Stack.Screen
-          name="MaraicherHome"
-          component={MaraicherHomeScreen}
-          options={{ headerShown: false }}
-        />
-        <Stack.Screen
-          name="PlancheList"
-          component={PlancheListScreen}
-          options={{ headerShown: false }}
-        />
-        <Stack.Screen
-          name="PlancheForm"
-          component={PlancheFormScreen}
-          options={{ headerShown: false }}
-        />
-        <Stack.Screen
-          name="CultureForm"
-          component={CultureFormScreen}
-          options={{ headerShown: false }}
-        />
-        <Stack.Screen
-          name="SaisieRecolte"
-          component={SaisieRecolteScreen}
-          options={{ headerShown: false }}
-        />
-
-        {/* ─── Phase 3 — ExportTrack ─── */}
+          {/* ─── Phase 3 — ExportTrack ─── */}
         <Stack.Screen
           name="ExportTrackHome"
           component={ExportTrackHomeScreen}
