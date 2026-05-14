@@ -7,8 +7,6 @@ import { StatusBar } from 'expo-status-bar';
 import { initDB, seedCropEngine } from './database/db';
 import { seedMaraicher } from './database/maraicherData';
 import { initCropEngine } from './database/cropEngine';
-import { initForagePro } from './database/foragePro';
-import { seedForagePro } from './database/forageData';
 import { initMaraicher } from './database/maraicher';
 import { seedExportTrack } from './database/exportTrack';
 import { initParametresEntreprise } from './database/parametresEntreprise';
@@ -36,13 +34,6 @@ import SiteDetailScreen from './screens/SiteDetailScreen';
 import SiteFormScreen from './screens/SiteFormScreen';
 import ParcelleMapScreen from './screens/ParcelleMapScreen';
 import CropEngineScreen from './screens/CropEngineScreen';
-
-// Screens — Phase 1 : ForagePro + Météo
-import TroupeauScreen from './screens/TroupeauScreen';
-import SaisieJournaliereScreen from './screens/SaisieJournaliereScreen';
-import StockFourrageScreen from './screens/StockFourrageScreen';
-import ForageProHomeScreen from './screens/ForageProHomeScreen';
-import MeteoSiteScreen from './screens/MeteoSiteScreen';
 
 // Screens — Phase 2 : MaraîcherGuide
 import MaraicherHomeScreen from './screens/MaraicherHomeScreen';
@@ -112,10 +103,8 @@ import ConformitePrpHaccpScreen from './screens/ConformitePrpHaccpScreen';
 // Initialisation synchrone avant tout rendu
 initDB();
 initCropEngine();
-initForagePro();
 initMaraicher();
 seedCropEngine();
-seedForagePro();
 seedMaraicher();
 seedExportTrack();
 initParametresEntreprise();
@@ -179,33 +168,6 @@ export default function App() {
         <Stack.Screen
           name="CropEngine"
           component={CropEngineScreen}
-          options={{ headerShown: false }}
-        />
-
-        {/* ─── Phase 1 — ForagePro + Météo ─── */}
-        <Stack.Screen
-          name="Troupeau"
-          component={TroupeauScreen}
-          options={{ headerShown: false }}
-        />
-        <Stack.Screen
-          name="SaisieJournaliere"
-          component={SaisieJournaliereScreen}
-          options={{ headerShown: false }}
-        />
-        <Stack.Screen
-          name="StockFourrage"
-          component={StockFourrageScreen}
-          options={{ headerShown: false }}
-        />
-        <Stack.Screen
-          name="ForageProHome"
-          component={ForageProHomeScreen}
-          options={{ headerShown: false }}
-        />
-        <Stack.Screen
-          name="MeteoSite"
-          component={MeteoSiteScreen}
           options={{ headerShown: false }}
         />
 
